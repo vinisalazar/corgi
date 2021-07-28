@@ -12,12 +12,10 @@ pytest:
   script:
     - poetry run coverage run -m pytest
     - poetry run coverage html
-    # - poetry run sphinx-build -b html docs docshtml
     - poetry run coverage report
   artifacts:
     paths:
       - htmlcov/
-      # - docshtml/
   
 # See https://about.gitlab.com/blog/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
 pages:
@@ -26,7 +24,6 @@ pages:
   dependencies:
     - pytest
   script:
-    # - mv docshtml/ public/
     - mv htmlcov/ public/coverage/
   artifacts:
     paths:

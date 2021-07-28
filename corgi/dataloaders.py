@@ -1,12 +1,15 @@
-import numpy as np
-from pathlib import Path
-import gzip
-from Bio import SeqIO
-import humanize
 import pandas as pd
 
-from .tensor import TensorDNA
+from fastcore.foundation import L
+from fastcore.dispatch import typedispatch
+from fastai.data.core import DataLoaders, get_empty_df
+from fastai.data.block import DataBlock, TransformBlock, CategoryBlock
+from fastai.torch_core import display_df
 
+from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
+
+from .tensor import TensorDNA
+from .transforms import SliceTransform
 
 
 @typedispatch
@@ -44,6 +47,6 @@ def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
     )
 
 
-def get_dataloaders(df: pd.DataFrame, **kwargs) -> Dataloaders:
+def get_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = get_datablock(**kwargs)
-    return datablock.dataloaders(df)
+    return datablock.dataloaders(df, bs=batch_size)
