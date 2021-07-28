@@ -1,0 +1,37 @@
+stages:
+  - test
+  - deploy
+
+pytest:
+  stage: test
+  image: python:3.8-slim-buster
+  before_script:
+    - apt-get update && apt-get install -y git && apt-get install -y pandoc
+    - pip install poetry
+    - poetry install
+  script:
+    - poetry run coverage run -m pytest
+    - poetry run coverage html
+    - poetry run sphinx-build -b html docs docshtml
+    - poetry run coverage report
+  artifacts:
+    paths:
+      - htmlcov/
+      - docshtml/
+  
+# See https://about.gitlab.com/blog/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
+pages:
+  stage: deploy
+  image: alpine
+  dependencies:
+    - pytest
+  script:
+    - mv docshtml/ public/
+    - mv htmlcov/ public/coverage/
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - master
+      
