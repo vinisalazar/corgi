@@ -1,4 +1,6 @@
 import random
+import torch.nn as nn
+from fastcore.transform import Transform
 
 from .tensor import TensorDNA
 
