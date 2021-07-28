@@ -1,6 +1,28 @@
 from dataclasses import dataclass
 import urllib.request
 import requests
+import humanize
+import gzip
+from Bio import SeqIO
+import progressbar
+import h5py
+
+from pathlib import Path
+
+
+def root_dir():
+    """ 
+    Returns the path to the root directory of this project.
+
+    This is useful for finding the data directory.
+    """
+    return Path(__file__).parent.resolve()
+
+
+def global_data_dir():
+    """ Returns the path to the directory to hold all the data from the VBA website. """
+    return root_dir()/"data"
+
 
 def filesize_readable(path: (str,Path)) -> str:
     path = Path(path)
@@ -13,7 +35,7 @@ def filesize_readable(path: (str,Path)) -> str:
 class ReqSeqCategory():
     name: str
     max_files: int = None
-    base_dir: str = str(base_dir_default)
+    base_dir: str = global_data_dir()
 
     def filename(self, index) -> str:
         """ The filename in the RefSeq database for this index. """
@@ -70,7 +92,6 @@ class ReqSeqCategory():
                             bar.update(i)
                     bar.update(i)
                             
-
     def h5_filesize(self) -> str:
         return filesize_readable( self.h5_path() )
 
