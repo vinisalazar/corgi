@@ -8,13 +8,13 @@ from corgi import dataloaders, tensor
 class TestData(unittest.TestCase):
     def setUp(self):
         data = [
-            [tensor.fasta_seq_to_tensor("ACGTACGT"), "bacteria", 0],
-            [tensor.fasta_seq_to_tensor("CTCTCTCTCT"), "mitochondrion", 1],
-            [tensor.fasta_seq_to_tensor("CTCTCTCTCT"), "bacteria", 1],
-            [tensor.fasta_seq_to_tensor("GGCCTTAA"), "archaea", 0],
-            [tensor.fasta_seq_to_tensor("ACGTACGT"), "bacteria", 0],
-            [tensor.fasta_seq_to_tensor("CTCTCTCTCT"), "mitochondrion", 0],
-            [tensor.fasta_seq_to_tensor("GGCCTTAA"), "archaea", 0],
+            [tensor.dna_seq_to_numpy("ACGTACGT"), "bacteria", 0],
+            [tensor.dna_seq_to_numpy("CTCTCTCTCT"), "mitochondrion", 1],
+            [tensor.dna_seq_to_numpy("CTCTCTCTCT"), "bacteria", 1],
+            [tensor.dna_seq_to_numpy("GGCCTTAA"), "archaea", 0],
+            [tensor.dna_seq_to_numpy("ACGTACGT"), "bacteria", 0],
+            [tensor.dna_seq_to_numpy("CTCTCTCTCT"), "mitochondrion", 0],
+            [tensor.dna_seq_to_numpy("GGCCTTAA"), "archaea", 0],
         ]
         df = pd.DataFrame(data, columns=['sequence', 'category', 'validation'])
 

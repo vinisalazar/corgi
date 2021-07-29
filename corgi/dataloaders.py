@@ -1,14 +1,17 @@
+import random
+import gzip
 import pandas as pd
-
+from Bio import SeqIO
 from fastcore.foundation import L
 from fastcore.dispatch import typedispatch
 from fastai.data.core import DataLoaders, get_empty_df
 from fastai.data.block import DataBlock, TransformBlock, CategoryBlock
 from fastai.torch_core import display_df
 
+
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
-from .tensor import TensorDNA
+from .tensor import TensorDNA, dna_seq_to_numpy
 from .transforms import SliceTransform
 
 
@@ -23,6 +26,8 @@ def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kw
     display_df(df)
     return ctxs
 
+def get_sequence_as_tensor(row):
+    return TensorDNA(row['sequence'])
 
 def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
 
@@ -41,7 +46,7 @@ def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
     return DataBlock(
         blocks=(TransformBlock, CategoryBlock),
         splitter=splitter,
-        get_x=ColReader('sequence'),
+        get_x=get_sequence_as_tensor,
         get_y=ColReader('category'),
         item_tfms=item_tfms,
     )
@@ -50,3 +55,48 @@ def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
 def get_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = get_datablock(**kwargs)
     return datablock.dataloaders(df, bs=batch_size)
+
+
+from pathlib import Path
+
+def fasta_to_dataframe(fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2):
+    fasta_path = Path(fasta_path)
+
+    if not fasta_path.exists():
+        raise FileNotFoundError(f"Cannot find fasta file {fasta_path}.")
+
+    data = []
+    try:
+        fasta = open(fasta_path, 'rt')
+    except:
+        try:
+            fasta = gzip.open(fasta_path, 'rt')
+        except:
+            raise Exception(f"Cannot read {fasta_path}.")
+
+    if validation_from_filename:
+        validation = 1 if "valid" in str(fasta_path) else 0
+
+    seqs = SeqIO.parse(fasta, "fasta")
+
+    for seq_index, seq in enumerate(seqs):
+        if max_seqs and seq_index >= max_seqs:
+            break
+
+        if not validation_from_filename:
+            validation = int(random.random() < validation_prob)
+
+        seq_as_numpy = dna_seq_to_numpy(seq)
+        data.append([seq.id, seq.description, seq_as_numpy, validation])
+
+    fasta.close()
+
+    df = pd.DataFrame(data, columns=["id", "description", "sequence", "validation"])
+    df['file'] = str(fasta_path)
+    df['category'] = fasta_path.name.split(".")[0]
+    return df
+
+
+def fastas_to_dataframe(fasta_paths, **kwargs):
+    dfs = [fasta_to_dataframe(fasta_path, **kwargs) for fasta_path in fasta_paths]
+    return pd.concat(dfs)
