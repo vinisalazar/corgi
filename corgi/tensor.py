@@ -27,7 +27,12 @@ class TensorDNA(TensorBase):
         return str(self)
 
 
-def dna_seq_to_numpy(seq):
+def dna_seq_to_numpy(seq) -> np.ndarray:
+    """
+    Transforms a sequence from biopython to a numpy array.
+    
+    Should this be a transform??
+    """
     seq_as_numpy = np.array(seq, 'c')
     seq_as_numpy = seq_as_numpy.view(np.uint8)
     # Ignore any characters in sequence which are below an ascii value of 'A' i.e. 65
@@ -38,7 +43,13 @@ def dna_seq_to_numpy(seq):
     seq_as_numpy = np.array(seq_as_numpy, dtype='u1')
     return seq_as_numpy
 
-def dna_seq_to_tensor(seq):
+def dna_seq_to_tensor(seq) -> TensorDNA:
+    """
+    Transforms a a sequence from biopython to a TensorDNA tensor.
+    
+    Should this be a pipeline?
+    Can we use the ToTensor transform in fastai?
+    """
     return TensorDNA(dna_seq_to_numpy(seq))
 
 

@@ -1,5 +1,7 @@
 import typer
 
+from . import training
+
 app = typer.Typer(help="A neural network classifier for metagenomic sequences.")
 
 @app.command()
@@ -12,11 +14,15 @@ def version():
 
 
 @app.command()
-def train():
+def train(
+    fasta_paths, 
+    output_dir: str, 
+):
     """
     Trains a model.
     """
-    raise NotImplementedError
+    return training.train(fasta_paths, output_dir=output_dir)
+
 
 @app.command()
 def classify():

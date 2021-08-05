@@ -29,7 +29,7 @@ def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kw
 def get_sequence_as_tensor(row):
     return TensorDNA(row['sequence'])
 
-def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
+def create_datablock(seq_length=None, validation_column="validation") -> DataBlock:
 
     # Check if we need to slice to a specific sequence length
     if seq_length:
@@ -52,8 +52,8 @@ def get_datablock(seq_length=None, validation_column="validation") -> DataBlock:
     )
 
 
-def get_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
-    datablock = get_datablock(**kwargs)
+def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
+    datablock = create_datablock(**kwargs)
     return datablock.dataloaders(df, bs=batch_size)
 
 
@@ -100,3 +100,13 @@ def fasta_to_dataframe(fasta_path, max_seqs=None, validation_from_filename=False
 def fastas_to_dataframe(fasta_paths, **kwargs):
     dfs = [fasta_to_dataframe(fasta_path, **kwargs) for fasta_path in fasta_paths]
     return pd.concat(dfs)
+
+
+def create_dataloaders_from_fastas(fasta_paths, batch_size=64, **kwargs) -> DataLoaders:
+    """ 
+    Creates a DataLoaders object from a list of fasta paths.
+    """
+    df = fastas_to_dataframe( fasta_paths, **kwargs )
+    return create_dataloaders( df, batch_size=batch_size )
+
+

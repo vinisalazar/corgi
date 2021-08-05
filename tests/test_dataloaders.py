@@ -18,11 +18,11 @@ class TestData(unittest.TestCase):
         ]
         df = pd.DataFrame(data, columns=['sequence', 'category', 'validation'])
 
-        self.dls = dataloaders.get_dataloaders(df, seq_length=4, batch_size=2)
+        self.dls = dataloaders.create_dataloaders(df, seq_length=4, batch_size=2)
 
 
     def test_datablock(self):
-        datablock = dataloaders.get_datablock()
+        datablock = dataloaders.create_datablock()
         assert type(datablock) == DataBlock
 
     def test_dataloaders(self):
