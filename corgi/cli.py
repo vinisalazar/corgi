@@ -1,6 +1,6 @@
 import typer
 
-from . import training
+from . import training, dataloaders
 
 app = typer.Typer(help="A neural network classifier for metagenomic sequences.")
 
@@ -17,11 +17,16 @@ def version():
 def train(
     fasta_paths, 
     output_dir: str, 
+    batch_size: int = 64,
+    num_epochs: int=20,
 ):
     """
-    Trains a model.
+    Trains a model from a set of fasta files.
+
+    TODO: Don't require fasta.
     """
-    return training.train(fasta_paths, output_dir=output_dir)
+    dls = dataloaders.create_dataloaders_from_fastas( fasta_paths, batch_size=batch_size )
+    return training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
 
 
 @app.command()
