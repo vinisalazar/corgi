@@ -6,8 +6,9 @@ from typer.testing import CliRunner
 
 from corgi import cli
 
+
 class TestCLI(unittest.TestCase):
-    def setUp(self):  #special function that runs before any test
+    def setUp(self):  # special function that runs before any test
         self.runner = CliRunner()
 
     def test_version(self):

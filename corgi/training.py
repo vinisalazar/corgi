@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from fastai.learner import Learner
 from fastai.metrics import accuracy
@@ -9,7 +8,7 @@ from . import dataloaders, models
 
 
 def get_learner(
-    dls, 
+    dls,
     output_dir: (str, Path),
 ):
     num_classes = len(dls.vocab)
@@ -18,10 +17,11 @@ def get_learner(
 
     return learner
 
-def train( 
-    dls, 
-    output_dir: (str, Path), 
-    num_epochs: int=20, 
+
+def train(
+    dls,
+    output_dir: (str, Path),
+    num_epochs: int = 20,
 ):
     learner = get_learner(dls, output_dir=output_dir)
     callbacks = SaveModelCallback()
