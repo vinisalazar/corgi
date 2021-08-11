@@ -66,6 +66,7 @@ def fasta_to_dataframe(
     fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2
 ):
     fasta_path = Path(fasta_path)
+    print(f"Processing:\t{fasta_path}")
 
     if not fasta_path.exists():
         raise FileNotFoundError(f"Cannot find fasta file {fasta_path}.")

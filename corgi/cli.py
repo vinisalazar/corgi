@@ -27,8 +27,8 @@ def train(
     """
     Trains a model from a set of fasta files.
     """
-    print('Training using:', fasta_paths)
-    print('Outputting to:', output_dir)
+    print('Training using:\t', fasta_paths)
+    print('Outputting to: \t', output_dir)
     dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size)
     return training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
 
