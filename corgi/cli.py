@@ -1,4 +1,6 @@
 import typer
+from pathlib import Path
+from typing import List
 
 from . import training, dataloaders
 
@@ -17,24 +19,24 @@ def version():
 
 @app.command()
 def train(
-    fasta_paths,
+    fasta_paths: List[Path],
     output_dir: str,
     batch_size: int = 64,
     num_epochs: int = 20,
 ):
     """
     Trains a model from a set of fasta files.
-
-    TODO: Don't require fasta.
     """
+    print('Training using:', fasta_paths)
+    print('Outputting to:', output_dir)
     dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size)
     return training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
 
 
 @app.command()
-def classify():
+def classify(fasta_path: Path):
     """
-    Classifies sequences in a Fasta file
+    Classifies sequences in a Fasta file.
     """
     raise NotImplementedError
 
