@@ -17,17 +17,19 @@ from .transforms import SliceTransform
 
 @typedispatch
 def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kwargs):
-    if ctxs is None: 
+    if ctxs is None:
         ctxs = get_empty_df(min(len(samples), max_n))
-    if trunc_at is not None: 
-        samples = L((s[0],*s[1:]) for s in samples)
-    ctxs = [(sample[0].show(),str(sample[1])) for sample in samples]   
-    df = pd.DataFrame(ctxs, columns=['x', 'y'])  
+    if trunc_at is not None:
+        samples = L((s[0], *s[1:]) for s in samples)
+    ctxs = [(sample[0].show(), str(sample[1])) for sample in samples]
+    df = pd.DataFrame(ctxs, columns=["x", "y"])
     display_df(df)
     return ctxs
 
+
 def get_sequence_as_tensor(row):
-    return TensorDNA(row['sequence'])
+    return TensorDNA(row["sequence"])
+
 
 def create_datablock(seq_length=None, validation_column="validation") -> DataBlock:
 
@@ -47,7 +49,7 @@ def create_datablock(seq_length=None, validation_column="validation") -> DataBlo
         blocks=(TransformBlock, CategoryBlock),
         splitter=splitter,
         get_x=get_sequence_as_tensor,
-        get_y=ColReader('category'),
+        get_y=ColReader("category"),
         item_tfms=item_tfms,
     )
 
@@ -59,7 +61,10 @@ def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders
 
 from pathlib import Path
 
-def fasta_to_dataframe(fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2):
+
+def fasta_to_dataframe(
+    fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2
+):
     fasta_path = Path(fasta_path)
 
     if not fasta_path.exists():
@@ -67,10 +72,10 @@ def fasta_to_dataframe(fasta_path, max_seqs=None, validation_from_filename=False
 
     data = []
     try:
-        fasta = open(fasta_path, 'rt')
+        fasta = open(fasta_path, "rt")
     except:
         try:
-            fasta = gzip.open(fasta_path, 'rt')
+            fasta = gzip.open(fasta_path, "rt")
         except:
             raise Exception(f"Cannot read {fasta_path}.")
 
@@ -92,8 +97,8 @@ def fasta_to_dataframe(fasta_path, max_seqs=None, validation_from_filename=False
     fasta.close()
 
     df = pd.DataFrame(data, columns=["id", "description", "sequence", "validation"])
-    df['file'] = str(fasta_path)
-    df['category'] = fasta_path.name.split(".")[0]
+    df["file"] = str(fasta_path)
+    df["category"] = fasta_path.name.split(".")[0]
     return df
 
 
@@ -103,10 +108,8 @@ def fastas_to_dataframe(fasta_paths, **kwargs):
 
 
 def create_dataloaders_from_fastas(fasta_paths, batch_size=64, **kwargs) -> DataLoaders:
-    """ 
+    """
     Creates a DataLoaders object from a list of fasta paths.
     """
-    df = fastas_to_dataframe( fasta_paths, **kwargs )
-    return create_dataloaders( df, batch_size=batch_size )
-
-
+    df = fastas_to_dataframe(fasta_paths, **kwargs)
+    return create_dataloaders(df, batch_size=batch_size)
