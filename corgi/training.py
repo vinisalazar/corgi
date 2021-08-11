@@ -5,8 +5,7 @@ from fastai.metrics import accuracy
 from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.schedule import fit_one_cycle
 
-from . import dataloaders, models
-
+from . import models
 
 def get_learner(
     dls, 
