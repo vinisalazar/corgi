@@ -23,13 +23,14 @@ def train(
     output_dir: str,
     batch_size: int = 64,
     num_epochs: int = 20,
+    max_seqs: int = None,
 ):
     """
     Trains a model from a set of fasta files.
     """
     print('Training using:\t', fasta_paths)
     print('Outputting to: \t', output_dir)
-    dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size)
+    dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size, max_seqs=max_seqs)
     return training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
 
 
