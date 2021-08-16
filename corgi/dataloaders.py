@@ -92,6 +92,7 @@ def fasta_to_dataframe(
         if not validation_from_filename:
             validation = int(random.random() < validation_prob)
 
+        seq_as_numpy = dna_seq_to_numpy(seq)
         data.append([seq.id, seq.description, seq_as_numpy, validation])
 
     fasta.close()
