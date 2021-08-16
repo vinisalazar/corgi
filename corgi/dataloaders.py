@@ -63,7 +63,7 @@ from pathlib import Path
 
 
 def fasta_to_dataframe(
-    fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2
+    fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2,
 ):
     fasta_path = Path(fasta_path)
     print(f"Processing:\t{fasta_path}")
@@ -92,7 +92,6 @@ def fasta_to_dataframe(
         if not validation_from_filename:
             validation = int(random.random() < validation_prob)
 
-        seq_as_numpy = dna_seq_to_numpy(seq)
         data.append([seq.id, seq.description, seq_as_numpy, validation])
 
     fasta.close()
@@ -108,9 +107,9 @@ def fastas_to_dataframe(fasta_paths, **kwargs):
     return pd.concat(dfs)
 
 
-def create_dataloaders_from_fastas(fasta_paths, batch_size=64, **kwargs) -> DataLoaders:
+def create_dataloaders_from_fastas(fasta_paths, batch_size=64, seq_length=None, **kwargs) -> DataLoaders:
     """
     Creates a DataLoaders object from a list of fasta paths.
     """
     df = fastas_to_dataframe(fasta_paths, **kwargs)
-    return create_dataloaders(df, batch_size=batch_size)
+    return create_dataloaders(df, batch_size=batch_size, seq_length=seq_length)
