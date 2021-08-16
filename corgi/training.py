@@ -23,7 +23,7 @@ def train(
     num_epochs: int = 20,
 ):
     learner = get_learner(dls, output_dir=output_dir)
-    callbacks = SaveModelCallback()
+    callbacks = SaveModelCallback(monitor='valid_accuracy')
     learner.fit_one_cycle(num_epochs, cbs=callbacks)
 
     return learner
