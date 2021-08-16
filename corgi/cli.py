@@ -2,7 +2,7 @@ import typer
 from pathlib import Path
 from typing import List
 
-from . import training, dataloaders
+from . import training, dataloaders, profiling
 
 app = typer.Typer(help="A neural network classifier for metagenomic sequences.")
 
@@ -32,7 +32,10 @@ def train(
     print('Training using:\t', fasta_paths)
     print('Outputting to: \t', output_dir)
     dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size, max_seqs=max_seqs, seq_length=seq_length)
-    return training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
+    result = training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
+    profiling.display_profiling()
+    return result
+
 
 
 @app.command()
@@ -40,6 +43,7 @@ def classify(fasta_path: Path):
     """
     Classifies sequences in a Fasta file.
     """
+    profiling.display_profiling()
     raise NotImplementedError
 
 
