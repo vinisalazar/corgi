@@ -52,7 +52,7 @@ class TestData(unittest.TestCase):
     def test_dataloaders(self):
         dls = test_dls()
         assert type(dls) == DataLoaders
-        self.assertEqual(len(dls.train), 2)
+        self.assertEqual(len(dls.train), 3)
         self.assertEqual(len(dls.valid), 1)
         self.assertListEqual(list(dls.vocab), ["archaea", "bacteria", "mitochondrion"])
 

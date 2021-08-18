@@ -1,6 +1,8 @@
 import random
 import gzip
 import pandas as pd
+from pathlib import Path
+
 from Bio import SeqIO
 from fastcore.foundation import L
 from fastcore.dispatch import typedispatch
@@ -31,7 +33,7 @@ def get_sequence_as_tensor(row):
     return TensorDNA(row["sequence"])
 
 
-def create_datablock(seq_length=None, validation_column="validation") -> DataBlock:
+def create_datablock(seq_length=None, validation_column="validation", validation_prob=0.2) -> DataBlock:
 
     # Check if we need to slice to a specific sequence length
     if seq_length:
@@ -43,7 +45,7 @@ def create_datablock(seq_length=None, validation_column="validation") -> DataBlo
     if validation_column:
         splitter = ColSplitter(validation_column)
     else:
-        splitter = RandomSplitter(valid_pct=0.2, seed=42)
+        splitter = RandomSplitter(valid_pct=validation_prob, seed=42)
 
     return DataBlock(
         blocks=(TransformBlock, CategoryBlock),
@@ -56,11 +58,7 @@ def create_datablock(seq_length=None, validation_column="validation") -> DataBlo
 
 def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = create_datablock(**kwargs)
-    return datablock.dataloaders(df, bs=batch_size)
-
-
-from pathlib import Path
-
+    return datablock.dataloaders(df, bs=batch_size, drop_last=False)
 
 def fasta_to_dataframe(
     fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2,
@@ -72,13 +70,10 @@ def fasta_to_dataframe(
         raise FileNotFoundError(f"Cannot find fasta file {fasta_path}.")
 
     data = []
-    try:
+    if fasta_path.suffix == ".gz":
+        fasta = gzip.open(fasta_path, "rt")
+    else:
         fasta = open(fasta_path, "rt")
-    except:
-        try:
-            fasta = gzip.open(fasta_path, "rt")
-        except:
-            raise Exception(f"Cannot read {fasta_path}.")
 
     if validation_from_filename:
         validation = 1 if "valid" in str(fasta_path) else 0

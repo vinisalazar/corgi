@@ -2,6 +2,8 @@ import typer
 from pathlib import Path
 from typing import List
 
+from fastai.learner import load_learner
+
 from . import training, dataloaders, profiling
 
 app = typer.Typer(help="A neural network classifier for metagenomic sequences.")
@@ -19,8 +21,8 @@ def version():
 
 @app.command()
 def train(
-    fasta_paths: List[Path],
     output_dir: str,
+    fasta_paths: List[Path],
     batch_size: int = 64,
     num_epochs: int = 20,
     max_seqs: int = None,
@@ -39,12 +41,32 @@ def train(
 
 
 @app.command()
-def classify(fasta_path: Path):
+def classify(
+    learner_path: Path,
+    output_csv: Path,
+    fasta_paths: List[Path],
+    max_seqs: int = None,
+):
     """
     Classifies sequences in a Fasta file.
     """
+    # Read Fasta file
+    df = dataloaders.fastas_to_dataframe(fasta_paths=fasta_paths, max_seqs=max_seqs)
+
+    # open learner from pickled file
+    learner = load_learner(learner_path)
+
+    # Classify results
+    dl = learner.dls.test_dl(df)
+    result = learner.get_preds(dl=dl, reorder=False, with_decoded=True)
+
+    # Output results
+    df['prediction'] = list(map(lambda category_index: learner.dls.vocab[category_index], result[2]))
+    df['probability'] =  [probs[category].item() for probs, category in zip(result[0], result[2])]    
+    df = df[['id','prediction', 'probability', 'file'] ]
+    df.to_csv(str(output_csv))
+
     profiling.display_profiling()
-    raise NotImplementedError
 
 
 @app.command()

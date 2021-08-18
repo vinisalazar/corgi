@@ -25,5 +25,5 @@ def train(
     learner = get_learner(dls, output_dir=output_dir)
     callbacks = SaveModelCallback(monitor='accuracy')
     learner.fit_one_cycle(num_epochs, cbs=callbacks)
-
+    learner.export()
     return learner
