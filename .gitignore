@@ -20,3 +20,4 @@ raw/*
 docshtml/*
 data/*
 *.ipynb
+output*
