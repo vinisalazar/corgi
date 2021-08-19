@@ -61,8 +61,15 @@ def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders
     return datablock.dataloaders(df, bs=batch_size, drop_last=False)
 
 def fasta_to_dataframe(
-    fasta_path, max_seqs=None, validation_from_filename=False, validation_prob=0.2,
+    fasta_path, max_seqs=None, validation_from_filename=True, validation_prob=0.2,
 ):
+    """
+    Creates a pandas dataframe from a fasta file.
+
+    If validation_from_filename is True then it checks if 'valid' or 'train' is in the filename, 
+    otherwise it falls back to using the validation_prob.
+    If 'valid' or 'train' is in the filename and validation_from_filename is True then validation_prob is ignored.
+    """
     fasta_path = Path(fasta_path)
     print(f"Processing:\t{fasta_path}")
 
@@ -76,7 +83,12 @@ def fasta_to_dataframe(
         fasta = open(fasta_path, "rt")
 
     if validation_from_filename:
-        validation = 1 if "valid" in str(fasta_path) else 0
+        if "valid" in str(fasta_path):
+            validation = 1
+        elif "train" in str(fasta_path):
+            validation = 0
+        else:
+            validation_from_filename = False
 
     seqs = SeqIO.parse(fasta, "fasta")
 
