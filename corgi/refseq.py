@@ -102,8 +102,18 @@ class RefSeqCategory:
     def write_h5(self):
         result = []
         with h5py.File(self.h5_path(), "a") as h5:
-            for file_index in range(self.max_files):
-                fasta_path = self.fasta_path(file_index)
+            file_index = 0
+            while True:
+                if self.max_files and file_index >= self.max_files:
+                    break
+                # Try to get next file
+                try:
+                    fasta_path = self.fasta_path(file_index)
+                except:
+                    # If it fails, then assume it doesn't exist and exit
+                    print(f"Fasta file at index {file_index} for {self.name} not found.")
+                    break
+
                 seq_count = self.fasta_seq_count(file_index)
                 with gzip.open(fasta_path, "rt") as fasta:
                     bar = progressbar.ProgressBar(max_value=seq_count - 1)
@@ -125,6 +135,8 @@ class RefSeqCategory:
                         if i % 20 == 0:
                             bar.update(i)
                     bar.update(i)
+
+                file_index += 1
         
         df = pd.DataFrame(result)
         return df

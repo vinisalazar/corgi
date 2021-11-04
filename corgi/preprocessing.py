@@ -2,7 +2,7 @@ import pandas as pd
 from . import refseq
 
 def preprocess(categories = None, base_dir = None, max_files = None):
-    if categories is None:
+    if not categories:
         categories = refseq.REFSEQ_CATEGORIES
     
     if isinstance(categories, str):
