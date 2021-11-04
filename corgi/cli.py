@@ -1,39 +1,44 @@
 import typer
 from pathlib import Path
 from typing import List
+from typing import Optional
+import pandas as pd
+
 
 from fastai.learner import load_learner
 
-from . import training, dataloaders, profiling
+from . import training, dataloaders, profiling, preprocessing
 
-app = typer.Typer(help="A neural network classifier for metagenomic sequences.")
+app = typer.Typer()
 
 
-@app.command()
-def version():
+def version_callback(value: bool):
     """
     Prints the current version.
     """
-    import importlib.metadata
-
-    print(importlib.metadata.version("corgi"))
+    if value:
+        import importlib.metadata
+        version = importlib.metadata.version("corgi")
+        typer.echo(version)
+        raise typer.Exit()
 
 
 @app.command()
 def train(
     output_dir: str,
-    fasta_paths: List[Path],
+    csv: Path,
     batch_size: int = 64,
     num_epochs: int = 20,
-    max_seqs: int = None,
-    seq_length: int = None,
+    base_dir: Path = None,
 ):
     """
     Trains a model from a set of fasta files.
     """
-    print('Training using:\t', fasta_paths)
+    print('Training using:\t', csv)
     print('Outputting to: \t', output_dir)
-    dls = dataloaders.create_dataloaders_from_fastas(fasta_paths, batch_size=batch_size, max_seqs=max_seqs, seq_length=seq_length)
+
+    df = pd.read_csv(csv)
+    dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
     result = training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
     profiling.display_profiling()
     return result
@@ -70,8 +75,34 @@ def classify(
 
 
 @app.command()
+def preprocess(
+    output: Path,
+    base_dir: Path = None,
+    category: Optional[List[str]] = typer.Option(None),
+    max_files : int = None,
+):
+    df = preprocessing.preprocess( category, base_dir, max_files=max_files )
+
+    df.to_csv(output)
+    print(df)
+
+
+@app.command()
 def repo():
     """
     Opens the repository in a web browser
     """
     typer.launch("https://gitlab.unimelb.edu.au/mdap/corgi")
+
+
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None, "--version", "-v", callback=version_callback, is_eager=True, help="Prints the current version."
+    ),    
+):
+    """
+    CORGI - Classifier for ORganelle Genomes.
+    """
+    pass
+

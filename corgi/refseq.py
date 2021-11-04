@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from os import access
 import urllib.request
 import requests
 import humanize
@@ -6,9 +7,26 @@ import gzip
 from Bio import SeqIO
 import progressbar
 import h5py
+import pandas as pd
 
 from pathlib import Path
+from . import tensor
 
+
+REFSEQ_CATEGORIES = [
+    "archaea",
+    "bacteria",
+    "fungi",
+    "invertebrate",
+    "mitochondrion",
+    "plant",
+    "plasmid",
+    "plastid",
+    "protozoa",
+    "vertebrate_mammalian",
+    "vertebrate_other",
+    "viral",
+]
 
 def root_dir():
     """
@@ -32,7 +50,7 @@ def filesize_readable(path: (str, Path)) -> str:
 
 
 @dataclass
-class ReqSeqCategory:
+class RefSeqCategory:
     name: str
     max_files: int = None
     base_dir: str = global_data_dir()
@@ -72,7 +90,17 @@ class ReqSeqCategory:
             seq_count = sum(1 for _ in seqs)
         return seq_count
 
+    def get_seq(self, accession):
+        if not hasattr(self, 'read_h5'):
+            self.read_h5 = h5py.File(self.h5_path(), "r")
+        
+        return self.read_h5[self.dataset_key(accession)]
+
+    def dataset_key(self, accession):
+        return f"/{self.name}/{accession}"
+
     def write_h5(self):
+        result = []
         with h5py.File(self.h5_path(), "a") as h5:
             for file_index in range(self.max_files):
                 fasta_path = self.fasta_path(file_index)
@@ -81,22 +109,25 @@ class ReqSeqCategory:
                     bar = progressbar.ProgressBar(max_value=seq_count - 1)
                     seqs = SeqIO.parse(fasta, "fasta")
                     for i, seq in enumerate(seqs):
-                        dataset_name = f"/{self.name}/{seq.name}"
-                        # print(dataset_name)
+                        dataset_key = self.dataset_key(seq.name)
 
                         # Check if we already have this dataset. If not then add.
-                        if not dataset_name in h5:
+                        if not dataset_key in h5:
                             dset = h5.create_dataset(
-                                dataset_name,
-                                data=fasta_seq_to_numpy(seq),
+                                dataset_key,
+                                data=tensor.dna_seq_to_numpy(seq),
                                 dtype="u1",
                                 compression="gzip",
                                 compression_opts=9,
                             )
 
+                        result.append( dict(category=self.name, accession=seq.name, file_index=file_index) )
                         if i % 20 == 0:
                             bar.update(i)
                     bar.update(i)
+        
+        df = pd.DataFrame(result)
+        return df
 
     def h5_filesize(self) -> str:
         return filesize_readable(self.h5_path())
@@ -122,3 +153,4 @@ class ReqSeqCategory:
     # def df(self):
     #     data = []
     #     with h5py.File(self.h5_path(), "r") as h5:
+

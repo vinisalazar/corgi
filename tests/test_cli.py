@@ -12,7 +12,7 @@ class TestCLI(unittest.TestCase):
         self.runner = CliRunner()
 
     def test_version(self):
-        result = self.runner.invoke(cli.app, ["version"])
+        result = self.runner.invoke(cli.app, ["--version"])
         assert result.exit_code == 0
         assert "0.1.0" in result.stdout
 

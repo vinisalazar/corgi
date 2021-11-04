@@ -10,12 +10,11 @@ from fastai.data.core import DataLoaders, get_empty_df
 from fastai.data.block import DataBlock, TransformBlock, CategoryBlock
 from fastai.torch_core import display_df
 
-
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
-from .tensor import TensorDNA, dna_seq_to_numpy
-from .transforms import SliceTransform
-
+from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
+from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA
+from .refseq import RefSeqCategory
 
 @typedispatch
 def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kwargs):
@@ -32,6 +31,21 @@ def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kw
 def get_sequence_as_tensor(row):
     return TensorDNA(row["sequence"])
 
+
+def create_datablock_refseq(categories, validation_column=None, validation_prob=0.2) -> DataBlock:
+
+    # Check if there is a validation column in the dataset otherwise use a random splitter
+    if validation_column:
+        splitter = ColSplitter(validation_column)
+    else:
+        splitter = RandomSplitter(valid_pct=validation_prob, seed=42)
+
+    return DataBlock(
+        blocks=(TransformBlock, CategoryBlock),
+        splitter=splitter,
+        get_y=ColReader("category"),
+        item_tfms=RowToTensorDNA(categories),
+    )
 
 def create_datablock(seq_length=None, validation_column="validation", validation_prob=0.2) -> DataBlock:
 
@@ -55,6 +69,11 @@ def create_datablock(seq_length=None, validation_column="validation", validation
         item_tfms=item_tfms,
     )
 
+
+def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64,  **kwargs) -> DataLoaders:
+    categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
+    datablock = create_datablock_refseq(categories, **kwargs)
+    return datablock.dataloaders(df, bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
 
 def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = create_datablock(**kwargs)
@@ -87,7 +106,7 @@ def fasta_to_dataframe(
         if not validation_from_filename:
             validation = int(random.random() < validation_prob)
 
-        seq_as_numpy = dna_seq_to_numpy(seq)
+        seq_as_numpy = dna_seq_to_tensor(seq)
         data.append([seq.id, seq.description, seq_as_numpy, validation])
 
     fasta.close()

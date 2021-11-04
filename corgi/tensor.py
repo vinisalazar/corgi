@@ -1,5 +1,5 @@
 import numpy as np
-
+import torch
 from fastai.torch_core import TensorBase
 
 vocab_to_int = {"A": 1, "C": 2, "G": 3, "T": 4, "N": 0}
@@ -7,6 +7,8 @@ int_to_vocab = dict(zip(vocab_to_int.values(), vocab_to_int.keys()))
 
 
 class TensorDNA(TensorBase):
+    dtype = torch.uint8
+
     def __str__(self):
         # return str(self.tolist())[:50]
         items = self.tolist()

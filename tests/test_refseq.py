@@ -6,7 +6,7 @@ from corgi import refseq
 
 class TestRefSeq(unittest.TestCase):
     def setUp(self):
-        self.mitochondrion = refseq.ReqSeqCategory("mitochondrion", max_files=1)
+        self.mitochondrion = refseq.RefSeqCategory("mitochondrion", max_files=1)
 
     def test_filename(self):
         self.assertEqual(
