@@ -11,6 +11,8 @@ def get_learner(
     dls,
     output_dir: (str, Path),
 ):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
     model = models.ConvRecurrantClassifier(num_classes=num_classes)
     learner = Learner(dls, model, metrics=accuracy, path=output_dir)
