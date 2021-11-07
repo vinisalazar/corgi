@@ -115,7 +115,10 @@ class RefSeqCategory:
         print(f"max_files = {max_files}")
         for index in range(max_files):
             print(f"{self.name} - {index}")
-            self.fasta_path(index, download=True)
+            try:
+                self.fasta_path(index, download=True)
+            except:
+                print(f"failed to download. {self.name} file {index}")
 
     def fasta_path(self, index: int, download=True) -> Path:
         """
