@@ -154,7 +154,7 @@ class RefSeqCategory:
         max_files = 0
         soup = self.index_html()
         for link in soup.findAll("a"):
-            m = re.match(r".*.(\d+).1.genomic.fna.gz", link.get("href"))
+            m = re.match(self.name + r"\.(\d+)\.1\.genomic\.fna\.gz", link.get("href"))
             if m:
                 max_files = max(int(m.group(1)), max_files)
         return max_files
