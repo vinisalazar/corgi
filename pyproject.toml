@@ -16,6 +16,9 @@ humanize = "^3.10.0"
 pyarrow = "^4.0.1"
 typer = "^0.3.2"
 plotly = "^5.3.1"
+appdirs = "^1.4.4"
+beautifulsoup4 = "^4.10.0"
+httpx = "^0.20.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

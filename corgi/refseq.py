@@ -5,9 +5,14 @@ import requests
 import humanize
 import gzip
 from Bio import SeqIO
+import re
 import progressbar
 import h5py
 import pandas as pd
+import asyncio
+import httpx
+from appdirs import user_data_dir
+from bs4 import BeautifulSoup
 
 from pathlib import Path
 from . import tensor
@@ -55,6 +60,9 @@ class RefSeqCategory:
     max_files: int = None
     base_dir: str = global_data_dir()
 
+    def base_url(self):
+        return f"https://ftp.ncbi.nlm.nih.gov/refseq/release/{self.name}"
+
     def filename(self, index) -> str:
         """ The filename in the RefSeq database for this index. """
         if self.max_files:
@@ -64,9 +72,41 @@ class RefSeqCategory:
 
     def fasta_url(self, index: int) -> str:
         """ The url for the fasta file for this index online. """
-        return f"https://ftp.ncbi.nlm.nih.gov/refseq/release/{self.name}/{self.filename(index)}"
+        return f"{self.base_url()}/{self.filename(index)}"
 
-    def fasta_path(self, index: int) -> Path:
+    def index_html(self):
+        index_path = Path(user_data_dir())/f"{self.name}.index.html"
+        if not index_path.exists():
+            url = self.base_url()
+            print("Downloading:", url)
+            urllib.request.urlretrieve(url, index_path)
+        with open(index_path, 'r') as f:
+            contents = f.read()
+            soup = BeautifulSoup(contents, 'html.parser')
+        return soup
+
+    async def download(self, index: int):
+        local_path = self.fasta_path(index, download=False)
+        
+        if not local_path.exists():
+            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+            async with httpx.AsyncClient(limits=limits) as client:
+                url = self.fasta_url(index)
+                print(f"downloading {url}")
+                response = await client.get(url)    
+                open(local_path, 'wb').write(response.content)
+                print(f"done {local_path}")
+        return local_path
+
+    async def download_all(self):
+        paths = []
+        max_files = self.max_files or self.max_files_available()
+        print(f"max_files = {max_files}")
+        for index in range(max_files):
+            paths.append(self.download(index))
+        await asyncio.gather(*paths)
+
+    def fasta_path(self, index: int, download=True) -> Path:
         """
         Returns the local path for the file at this index.
 
@@ -74,7 +114,7 @@ class RefSeqCategory:
         """
         local_path = Path(self.base_dir) / self.name / self.filename(index)
         local_path.parent.mkdir(exist_ok=True, parents=True)
-        if not local_path.exists():
+        if download and not local_path.exists():
             url = self.fasta_url(index)
             print("Downloading:", url)
             urllib.request.urlretrieve(url, local_path)
@@ -98,6 +138,15 @@ class RefSeqCategory:
 
     def dataset_key(self, accession):
         return f"/{self.name}/{accession}"
+
+    def max_files_available(self):
+        max_files = 0
+        soup = self.index_html()
+        for link in soup.findAll("a"):
+            m = re.match(r".*.(\d+).1.genomic.fna.gz", link.get("href"))
+            if m:
+                max_files = max(int(m.group(1)), max_files)
+        return max_files
 
     def write_h5(self):
         result = []

@@ -1,5 +1,6 @@
 import pandas as pd
 from . import refseq
+import asyncio
 
 def preprocess(categories = None, base_dir = None, max_files = None):
     if not categories:
@@ -17,3 +18,17 @@ def preprocess(categories = None, base_dir = None, max_files = None):
     df = pd.concat(dfs, ignore_index=True)
     
     return df
+
+
+def download(categories = None, base_dir = None, max_files = None):
+    if not categories:
+        categories = refseq.REFSEQ_CATEGORIES
+    
+    if isinstance(categories, str):
+        categories = [categories]
+    
+    for name in categories:
+        category = refseq.RefSeqCategory(name=name, max_files=max_files, base_dir=base_dir)
+        print(f"downloading {category}")
+        asyncio.run(category.download_all())
+

@@ -88,6 +88,15 @@ def preprocess(
 
 
 @app.command()
+def download(
+    base_dir: Path = None,
+    category: Optional[List[str]] = typer.Option(None),
+    max_files : int = None,
+):
+    preprocessing.download( category, base_dir, max_files=max_files )
+
+
+@app.command()
 def repo():
     """
     Opens the repository in a web browser
