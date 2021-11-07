@@ -11,6 +11,7 @@ def preprocess(categories = None, base_dir = None, max_files = None):
     
     dfs = []
     for name in categories:
+        print(f"Preprocessing {name}")	
         category = refseq.RefSeqCategory(name=name, max_files=max_files, base_dir=base_dir)
         category_df = category.write_h5()
         dfs.append(category_df)
@@ -30,5 +31,6 @@ def download(categories = None, base_dir = None, max_files = None):
     for name in categories:
         category = refseq.RefSeqCategory(name=name, max_files=max_files, base_dir=base_dir)
         print(f"downloading {category}")
-        asyncio.run(category.download_all())
+        category.download_all()
+        # asyncio.run(category.download_all())
 

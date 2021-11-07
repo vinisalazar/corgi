@@ -98,13 +98,24 @@ class RefSeqCategory:
                 print(f"done {local_path}")
         return local_path
 
-    async def download_all(self):
+    async def download_all_async(self):
         paths = []
-        max_files = self.max_files or self.max_files_available()
+        max_files = self.max_files_available()
+        if self.max_files:
+            max_files = min(max_files, self.max_files)
         print(f"max_files = {max_files}")
         for index in range(max_files):
             paths.append(self.download(index))
         await asyncio.gather(*paths)
+
+    def download_all(self):
+        max_files = self.max_files_available()
+        if self.max_files:
+            max_files = min(max_files, self.max_files)
+        print(f"max_files = {max_files}")
+        for index in range(max_files):
+            print(f"{self.name} - {index}")
+            self.fasta_path(index, download=True)
 
     def fasta_path(self, index: int, download=True) -> Path:
         """
@@ -150,10 +161,14 @@ class RefSeqCategory:
 
     def write_h5(self):
         result = []
+        max_files = self.max_files_available()
+        if self.max_files:
+            max_files = min(max_files, self.max_files)
         with h5py.File(self.h5_path(), "a") as h5:
             file_index = 0
             while True:
-                if self.max_files and file_index >= self.max_files:
+                print(f"Preprocessing file {file_index} from {self.name}")
+                if file_index >= max_files:
                     break
                 # Try to get next file
                 try:
@@ -184,7 +199,7 @@ class RefSeqCategory:
                         if i % 20 == 0:
                             bar.update(i)
                     bar.update(i)
-
+                print()
                 file_index += 1
         
         df = pd.DataFrame(result)
