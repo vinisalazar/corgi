@@ -3,6 +3,7 @@ from os import access
 import urllib.request
 import requests
 import humanize
+import sys
 import gzip
 from Bio import SeqIO
 import re
@@ -59,6 +60,11 @@ class RefSeqCategory:
     name: str
     max_files: int = None
     base_dir: str = global_data_dir()
+
+    def __getstate__(self):
+        # Only returns required elements
+        # Needed because h5 files cannot be pickled
+        return dict(name=self.name, max_files=self.max_files, base_dir=self.base_dir)
 
     def base_url(self):
         return f"https://ftp.ncbi.nlm.nih.gov/refseq/release/{self.name}"
@@ -147,8 +153,11 @@ class RefSeqCategory:
     def get_seq(self, accession):
         if not hasattr(self, 'read_h5'):
             self.read_h5 = h5py.File(self.h5_path(), "r")
-        
-        return self.read_h5[self.dataset_key(accession)]
+        try:
+            return self.read_h5[self.dataset_key(accession)]
+        except:
+            print(f"Failed to read {accession} in {self.name}")
+            return []
 
     def dataset_key(self, accession):
         return f"/{self.name}/{accession}"
@@ -162,28 +171,30 @@ class RefSeqCategory:
                 max_files = max(int(m.group(1)), max_files)
         return max_files
 
-    def write_h5(self):
+    def write_h5(self, show_bar=True):
         result = []
+        if not sys.stdout.isatty():
+            show_bar = False
+
         max_files = self.max_files_available()
         if self.max_files:
             max_files = min(max_files, self.max_files)
         with h5py.File(self.h5_path(), "a") as h5:
             file_index = 0
-            while True:
-                print(f"Preprocessing file {file_index} from {self.name}")
-                if file_index >= max_files:
-                    break
+            for file_index in range(max_files):
+                print(f"Preprocessing file {file_index} from {self.name}", flush=True)
                 # Try to get next file
                 try:
                     fasta_path = self.fasta_path(file_index)
+                    seq_count = self.fasta_seq_count(file_index)
                 except:
                     # If it fails, then assume it doesn't exist and exit
                     print(f"Fasta file at index {file_index} for {self.name} not found.")
-                    break
-
-                seq_count = self.fasta_seq_count(file_index)
+                    continue
+                    
                 with gzip.open(fasta_path, "rt") as fasta:
-                    bar = progressbar.ProgressBar(max_value=seq_count - 1)
+                    if show_bar:
+                        bar = progressbar.ProgressBar(max_value=seq_count - 1)
                     seqs = SeqIO.parse(fasta, "fasta")
                     for i, seq in enumerate(seqs):
                         dataset_key = self.dataset_key(seq.name)
@@ -200,14 +211,15 @@ class RefSeqCategory:
 
                         result.append( dict(category=self.name, accession=seq.name, file_index=file_index) )
                         if i % 20 == 0:
-                            bar.update(i)
-                    bar.update(i)
+                            if show_bar:
+                                bar.update(i)
+                    if show_bar:
+                        bar.update(i)
                 print()
-                file_index += 1
         
         df = pd.DataFrame(result)
         return df
-
+        
     def h5_filesize(self) -> str:
         return filesize_readable(self.h5_path())
 

@@ -28,8 +28,9 @@ def train(
     output_dir: str,
     csv: Path,
     batch_size: int = 64,
-    num_epochs: int = 20,
+    epochs: int = 20,
     base_dir: Path = None,
+    wandb: bool = False,
 ):
     """
     Trains a model from a set of fasta files.
@@ -38,8 +39,10 @@ def train(
     print('Outputting to: \t', output_dir)
 
     df = pd.read_csv(csv)
+    print(f'Training on {len(df)} sequences.')
+
     dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
-    result = training.train(dls, output_dir=output_dir, num_epochs=num_epochs)
+    result = training.train(dls, output_dir=output_dir, epochs=epochs, wandb=wandb)
     profiling.display_profiling()
     return result
 

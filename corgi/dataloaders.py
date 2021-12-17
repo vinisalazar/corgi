@@ -32,7 +32,7 @@ def get_sequence_as_tensor(row):
     return TensorDNA(row["sequence"])
 
 
-def create_datablock_refseq(categories, validation_column=None, validation_prob=0.2) -> DataBlock:
+def create_datablock_refseq(categories, validation_column="validation", validation_prob=0.2) -> DataBlock:
 
     # Check if there is a validation column in the dataset otherwise use a random splitter
     if validation_column:
