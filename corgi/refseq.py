@@ -171,17 +171,20 @@ class RefSeqCategory:
                 max_files = max(int(m.group(1)), max_files)
         return max_files
 
-    def write_h5(self, show_bar=True):
+    def write_h5(self, show_bar=True, file_indexes=None):
         result = []
         if not sys.stdout.isatty():
             show_bar = False
 
-        max_files = self.max_files_available()
-        if self.max_files:
-            max_files = min(max_files, self.max_files)
+        if file_indexes is None:
+            max_files = self.max_files_available()
+            if self.max_files:
+                max_files = min(max_files, self.max_files)
+
+            file_indexes = range(max_files)
+
         with h5py.File(self.h5_path(), "a") as h5:
-            file_index = 0
-            for file_index in range(max_files):
+            for file_index in file_indexes:
                 print(f"Preprocessing file {file_index} from {self.name}", flush=True)
                 # Try to get next file
                 try:

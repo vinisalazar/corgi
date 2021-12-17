@@ -83,8 +83,9 @@ def preprocess(
     base_dir: Path = None,
     category: Optional[List[str]] = typer.Option(None),
     max_files : int = None,
+    file_index: Optional[List[int]] = typer.Option(None),
 ):
-    df = preprocessing.preprocess( category, base_dir, max_files=max_files )
+    df = preprocessing.preprocess( category, base_dir, max_files=max_files, file_indexes=file_index )
 
     df.to_csv(output)
     print(df)
