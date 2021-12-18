@@ -10,12 +10,15 @@ from . import models
 def get_learner(
     dls,
     output_dir: (str, Path),
+    fp16: bool = False,
 ) -> Learner:
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
     model = models.ConvRecurrantClassifier(num_classes=num_classes)
     learner = Learner(dls, model, metrics=accuracy, path=output_dir)
+    if fp16:
+        learner = learner.to_fp16()
 
     return learner
 
@@ -35,11 +38,23 @@ def train(
     learner: Learner = None,
     epochs: int = 20,
     wandb: bool = False,
+    fp16: bool = False,
 ) -> Learner:
 
     if learner is None:
-        learner = get_learner(dls, output_dir=output_dir)
+        learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
 
     learner.fit_one_cycle(epochs, cbs=get_callbacks(wandb=wandb))
+    learner.export()
+    return learner
+
+def export(
+    dls,
+    output_dir: (str, Path), # This should be Union
+    filename: str = "model",
+    fp16: bool = False,
+):
+    learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
+    learner.load(filename)
     learner.export()
     return learner
