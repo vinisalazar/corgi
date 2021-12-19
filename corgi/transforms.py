@@ -67,7 +67,8 @@ class RowToTensorDNA(Transform):
     def encodes(self, row: pd.Series):
         return TensorDNA(self.category_dict[row['category']].get_seq(row["accession"]))
 
-@dataclass
+
+@dataclass # why is this a dataclass??
 class RandomSliceBatch(Transform):
     rand_generator = None
 

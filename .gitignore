@@ -21,3 +21,4 @@ docshtml/*
 data/*
 *.ipynb
 output*
+wandb/*

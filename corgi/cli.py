@@ -5,10 +5,12 @@ from typing import Optional
 import pandas as pd
 import time
 
+from fastcore.transform import Pipeline
 
 from fastai.learner import load_learner
 
 from . import training, dataloaders, profiling, preprocessing
+from .transforms import SliceTransform
 
 app = typer.Typer()
 
@@ -26,13 +28,14 @@ def version_callback(value: bool):
 
 @app.command()
 def train(
-    output_dir: str,
+    output_dir: Path,
     csv: Path,
     batch_size: int = 64,
     epochs: int = 20,
     base_dir: Path = None,
     wandb: bool = False,
-    fp16: bool = False,
+    wandb_name: str = "",
+    fp16: bool = True,
 ):
     """
     Trains a model from a set of fasta files.
@@ -43,8 +46,14 @@ def train(
     df = pd.read_csv(csv)
     print(f'Training on {len(df)} sequences.')
 
+    if wandb:
+        import wandb
+        if not wandb_name:
+            wandb_name = output_dir.name
+        wandb.init(project="corgi", name=wandb_name)
+
     dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
-    result = training.train(dls, output_dir=output_dir, epochs=epochs, wandb=wandb, fp16=fp16)
+    result = training.train(dls, output_dir=output_dir, epochs=epochs, fp16=fp16)
     profiling.display_profiling()
     return result
 
@@ -88,34 +97,44 @@ def validate(
 
     # open learner from pickled file
     learner = load_learner(learner_path)
+    after_item_original = Pipeline(learner.dls.after_item)
 
-    print('learner.dls.after_item', learner.dls.after_item)
-
-    return
-
+    # print(learner.show_training_loop())
+    # return
+    
     # rename variables for clarity
     # variables are singular because of the way typer handles lists
     seq_lengths = length
     categories = category
     
-    if categories is None:
+    if not categories:
         categories = df['category'].unique()
 
-    if seq_lengths is None:
-        seq_lengths = [3000]
+    if not seq_lengths:
+        seq_lengths = [150]
 
     output_dir.mkdir(exist_ok=True, parents=True)
     results = []
 
+    print("seq_lengths", seq_lengths)
     for seq_len in seq_lengths:
-        learner.dls.after_item = SliceTransform(seq_len)
+        print(f"Validating seqs at length {seq_len}")
+        # learner.dls.after_item = Pipeline(after_item_original)
+        # learner.dls.after_item.add(SliceTransform(seq_len))
 
         for category in categories:
-            category_df = df[df['cateogry'] == category]
+            print(f"Validating category {category}")
+
+            category_df = df[df['category'] == category].copy()
         
             # Classify results
             start_time = time.time()
             dl = learner.dls.test_dl(category_df)
+            dl.before_batch = Pipeline()
+            dl.after_item = Pipeline(after_item_original)
+            dl.after_item.add(SliceTransform(seq_len))
+            print(dl.after_item)
+            
             result = learner.get_preds(dl=dl, reorder=False, with_decoded=True)
             end_time = time.time()
             classification_time = end_time - start_time
@@ -130,17 +149,19 @@ def validate(
 
             # Output results
             category_df.to_csv(str(output_dir/f"validation-{category}-{seq_len}.csv"))
-            results.append(dict(
+            row_results = dict(
                 category=category,
                 seq_len=seq_len,
                 total=total,
                 correct=correct,
                 sensitivity=sensitivity,
                 classification_time=classification_time,
-            ))
+            )
+            print(row_results)
+            results.append(row_results)
     results_df = pd.DataFrame(results)
     results_df.to_csv(str(output_dir/f"results.csv"))
-
+    print(results_df)
     profiling.display_profiling()
 
 

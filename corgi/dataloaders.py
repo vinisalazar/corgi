@@ -2,11 +2,13 @@ import random
 import gzip
 import pandas as pd
 from pathlib import Path
+import numpy as np
 
 from Bio import SeqIO
 from fastcore.foundation import L
 from fastcore.dispatch import typedispatch
 from fastai.data.core import DataLoaders, get_empty_df
+from fastai.callback.data import WeightedDL
 from fastai.data.block import DataBlock, TransformBlock, CategoryBlock
 from fastai.torch_core import display_df
 
@@ -70,10 +72,28 @@ def create_datablock(seq_length=None, validation_column="validation", validation
     )
 
 
-def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64,  **kwargs) -> DataLoaders:
+def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, balanced:bool=True, **kwargs) -> DataLoaders:
     categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
-    datablock = create_datablock_refseq(categories, **kwargs)
-    return datablock.dataloaders(df, bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
+
+    dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
+
+    validation_column = "validation"
+    if validation_column not in df:
+        validation_column=None
+
+    datablock = create_datablock_refseq(categories, validation_column=validation_column, **kwargs)
+
+    if balanced and validation_column in df:
+        train_df = df[ df[validation_column] == 0 ]
+        weights = np.zeros( (len(train_df),) )
+        value_counts = train_df['category'].value_counts()
+        for name in df.category.unique():
+            weights[ train_df['category'] == name ] = value_counts.max()/value_counts[name]
+        
+        dataloaders_kwargs['dl_type'] = WeightedDL
+        dataloaders_kwargs['dl_kwargs'] = [dict(wgts=weights),dict()]
+
+    return datablock.dataloaders(df, **dataloaders_kwargs)
 
 def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = create_datablock(**kwargs)

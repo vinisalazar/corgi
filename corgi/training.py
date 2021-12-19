@@ -2,15 +2,18 @@ from pathlib import Path
 from fastai.learner import Learner
 from fastai.metrics import accuracy
 from fastai.callback.tracker import SaveModelCallback
+from fastai.callback.wandb import WandbCallback
 from fastai.callback.progress import CSVLogger
 from fastai.callback.schedule import fit_one_cycle
+from contextlib import nullcontext
+import wandb
 
 from . import models
 
 def get_learner(
     dls,
     output_dir: (str, Path),
-    fp16: bool = False,
+    fp16: bool = True,
 ) -> Learner:
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -22,13 +25,9 @@ def get_learner(
 
     return learner
 
-def get_callbacks(wandb: bool = False) -> list:
+def get_callbacks() -> list:
     callbacks = [SaveModelCallback(monitor='accuracy'), CSVLogger()]
-    if wandb:
-        import wandb
-        from fastai.callback.wandb import WandbCallback
-
-        wandb.init(project="corgi")
+    if wandb.run:
         callbacks.append(WandbCallback())
     return callbacks
 
@@ -37,14 +36,16 @@ def train(
     output_dir: (str, Path), # This should be Union
     learner: Learner = None,
     epochs: int = 20,
-    wandb: bool = False,
-    fp16: bool = False,
+    fp16: bool = True,
+    distributed: bool = False,
 ) -> Learner:
 
     if learner is None:
         learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
 
-    learner.fit_one_cycle(epochs, cbs=get_callbacks(wandb=wandb))
+    with learn.distrib_ctx() if distributed else nullcontext():
+        learner.fit_one_cycle(epochs, cbs=get_callbacks())
+    
     learner.export()
     return learner
 
@@ -52,7 +53,7 @@ def export(
     dls,
     output_dir: (str, Path), # This should be Union
     filename: str = "model",
-    fp16: bool = False,
+    fp16: bool = True,
 ):
     learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
     learner.load(filename)
