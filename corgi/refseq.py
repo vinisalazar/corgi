@@ -147,9 +147,11 @@ class RefSeqCategory:
 
     def fasta_seq_count(self, index: int) -> int:
         fasta_path = self.fasta_path(index)
+        seq_count = 0
         with gzip.open(fasta_path, "rt") as fasta:
-            seqs = SeqIO.parse(fasta, "fasta")
-            seq_count = sum(1 for _ in seqs)
+            for line in fasta:
+                if line.startswith(">"):
+                    seq_count += 1
         return seq_count
 
     def get_seq(self, accession):
@@ -178,7 +180,7 @@ class RefSeqCategory:
         if not sys.stdout.isatty():
             show_bar = False
 
-        if file_indexes is None:
+        if file_indexes is None or len(file_indexes) == 0:
             max_files = self.max_files_available()
             if self.max_files:
                 max_files = min(max_files, self.max_files)

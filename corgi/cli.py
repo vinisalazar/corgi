@@ -1,3 +1,4 @@
+from os import mkdir
 import typer
 from pathlib import Path
 from typing import List
@@ -202,8 +203,9 @@ def preprocess(
     max_files : int = None,
     file_index: Optional[List[int]] = typer.Option(None),
 ):
-    df = preprocessing.preprocess( category, base_dir, max_files=max_files, file_indexes=file_index )
 
+    df = preprocessing.preprocess( category, base_dir, max_files=max_files, file_indexes=file_index )
+    output.parent.mkdir(exist_ok=True, parents=True)
     df.to_csv(output)
     print(df)
 
