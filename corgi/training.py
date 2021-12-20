@@ -1,19 +1,16 @@
+from contextlib import nullcontext
 from pathlib import Path
-import torch
+
 from fastai.learner import Learner
-from fastai.metrics import accuracy, APScoreMulti, Precision, Recall, RocAuc, F1Score
+from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
 from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.wandb import WandbCallback
 from fastai.callback.progress import CSVLogger
 from fastai.callback.schedule import fit_one_cycle
-from contextlib import nullcontext
+
 import wandb
 
 from . import models
-
-def accuracy_multi_argmax(inp, targ, thresh=0.5, sigmoid=True):
-    return accuracy_multi(torch.argmax(inp, dim=-1), targ, thresh, sigmoid)
-
 
 def get_learner(
     dls,
