@@ -13,6 +13,7 @@ def preprocess(categories = None, base_dir = None, max_files = None, file_indexe
     for name in categories:
         print(f"Preprocessing {name}", flush=True)	
         category = refseq.RefSeqCategory(name=name, max_files=max_files, base_dir=base_dir)
+        print(file_indexes)
         category_df = category.write_h5(file_indexes=file_indexes)
         dfs.append(category_df)
 
