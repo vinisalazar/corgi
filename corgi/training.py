@@ -1,6 +1,7 @@
 from pathlib import Path
+import torch
 from fastai.learner import Learner
-from fastai.metrics import accuracy
+from fastai.metrics import accuracy, APScoreMulti, Precision, Recall, RocAuc, F1Score
 from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.wandb import WandbCallback
 from fastai.callback.progress import CSVLogger
@@ -10,16 +11,35 @@ import wandb
 
 from . import models
 
+def accuracy_multi_argmax(inp, targ, thresh=0.5, sigmoid=True):
+    return accuracy_multi(torch.argmax(inp, dim=-1), targ, thresh, sigmoid)
+
+
 def get_learner(
     dls,
     output_dir: (str, Path),
     fp16: bool = True,
 ) -> Learner:
+    """
+    Creates a fastai learner object.
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
-    model = models.ConvRecurrantClassifier(num_classes=num_classes)
-    learner = Learner(dls, model, metrics=accuracy, path=output_dir)
+
+    model = models.ConvRecurrantClassifier(num_classes=num_classes, lstm_dims=64)
+
+    average = "macro"
+    metrics = [
+        accuracy, 
+        F1Score(average=average),
+        Precision(average=average),
+        Recall(average=average),
+        RocAuc(average=average),
+    ]
+
+    learner = Learner(dls, model, metrics=metrics, path=output_dir)
+
     if fp16:
         learner = learner.to_fp16()
 
