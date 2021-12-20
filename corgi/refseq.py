@@ -141,7 +141,9 @@ class RefSeqCategory:
         return local_path
 
     def h5_path(self):
-        return Path(self.base_dir) / f"{self.name}.h5"
+        base_dir = Path(self.base_dir)
+        base_dir.mkdir(exist_ok=True, parents=True)
+        return base_dir / f"{self.name}.h5"
 
     def fasta_seq_count(self, index: int) -> int:
         fasta_path = self.fasta_path(index)
