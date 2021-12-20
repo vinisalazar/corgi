@@ -123,7 +123,7 @@ class RefSeqCategory:
             print(f"{self.name} - {index}")
             try:
                 self.fasta_path(index, download=True)
-            except:
+            except Exception:
                 print(f"failed to download. {self.name} file {index}")
 
     def fasta_path(self, index: int, download=True) -> Path:
@@ -157,12 +157,13 @@ class RefSeqCategory:
             self.read_h5 = h5py.File(self.h5_path(), "r")
         try:
             return self.read_h5[self.dataset_key(accession)]
-        except:
+        except Exception:
             print(f"Failed to read {accession} in {self.name}")
             return []
 
     def dataset_key(self, accession):
-        return f"/{self.name}/{accession}"
+        accession_hash = str(abs(hash(accession)))
+        return f"/{accession_hash[:3]}/{accession_hash[-3:]}/{accession}"
 
     def max_files_available(self):
         max_files = 0
@@ -178,21 +179,21 @@ class RefSeqCategory:
         if not sys.stdout.isatty():
             show_bar = False
 
-        if file_indexes is None:
+        if file_indexes is None or len(file_indexes) == 0:
             max_files = self.max_files_available()
             if self.max_files:
                 max_files = min(max_files, self.max_files)
 
             file_indexes = range(max_files)
 
-        with h5py.File(self.h5_path(), "a") as h5:
+        with h5py.File(self.h5_path(), "a", libver='latest') as h5:
             for file_index in file_indexes:
                 print(f"Preprocessing file {file_index} from {self.name}", flush=True)
                 # Try to get next file
                 try:
                     fasta_path = self.fasta_path(file_index)
                     seq_count = self.fasta_seq_count(file_index)
-                except:
+                except Exception:
                     # If it fails, then assume it doesn't exist and exit
                     print(f"Fasta file at index {file_index} for {self.name} not found.")
                     continue
