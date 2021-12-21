@@ -1,3 +1,5 @@
+from zlib import adler32
+
 from dataclasses import dataclass
 from os import access
 import urllib.request
@@ -164,8 +166,9 @@ class RefSeqCategory:
             return []
 
     def dataset_key(self, accession):
-        accession_hash = str(abs(hash(accession)))
-        return f"/{accession_hash[:3]}/{accession_hash[-3:]}/{accession}"
+        # Using adler32 for a fast deterministic hash
+        accession_hash = str(adler32(accession.encode('ascii')))
+        return f"/{accession_hash[-6:-3]}/{accession_hash[-3:]}/{accession}"
 
     def max_files_available(self):
         max_files = 0
@@ -175,6 +178,18 @@ class RefSeqCategory:
             if m:
                 max_files = max(int(m.group(1)), max_files)
         return max_files
+
+    def accessions(self):
+        accessions = set()
+
+        with h5py.File(self.h5_path(), "a") as h5:
+            for key0 in h5.keys():
+                for key1 in h5[f"/{key0}"].keys():
+                    dir_accessions = h5[f"/{key0}/{key1}"].keys()
+                    # for accession in dir_accessions:
+                    #     print(accession)
+                    accessions.update(dir_accessions)
+        return accessions
 
     def write_h5(self, show_bar=True, file_indexes=None):
         result = []
@@ -188,7 +203,7 @@ class RefSeqCategory:
 
             file_indexes = range(max_files)
 
-        with h5py.File(self.h5_path(), "a", libver='latest') as h5:
+        with h5py.File(self.h5_path(), "a") as h5:
             for file_index in file_indexes:
                 print(f"Preprocessing file {file_index} from {self.name}", flush=True)
                 # Try to get next file
@@ -209,13 +224,14 @@ class RefSeqCategory:
 
                         # Check if we already have this dataset. If not then add.
                         if not dataset_key in h5:
-                            dset = h5.create_dataset(
-                                dataset_key,
-                                data=tensor.dna_seq_to_numpy(seq),
-                                dtype="u1",
-                                compression="gzip",
-                                compression_opts=9,
-                            )
+                            print(f"no {dataset_key}")
+                            # dset = h5.create_dataset(
+                            #     dataset_key,
+                            #     data=tensor.dna_seq_to_numpy(seq),
+                            #     dtype="u1",
+                            #     compression="gzip",
+                            #     compression_opts=9,
+                            # )
 
                         result.append( dict(category=self.name, accession=seq.name, file_index=file_index) )
                         if i % 20 == 0:

@@ -10,7 +10,7 @@ from fastcore.transform import Pipeline
 
 from fastai.learner import load_learner
 
-from . import training, dataloaders, profiling, preprocessing
+from . import training, dataloaders, profiling, preprocessing, refseq
 from .transforms import SliceTransform
 
 app = typer.Typer()
@@ -208,6 +208,19 @@ def preprocess(
     output.parent.mkdir(exist_ok=True, parents=True)
     df.to_csv(output)
     print(df)
+
+
+@app.command()
+def accessions(
+    base_dir: Path = None,
+    category: Optional[List[str]] = typer.Option(None),
+):
+    categories = category
+    for category_name in category:
+        category = refseq.RefSeqCategory(name=category_name, base_dir=base_dir)
+        
+        accessions = category.accessions()
+        print(len(accessions))
 
 
 @app.command()
