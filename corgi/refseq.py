@@ -162,8 +162,9 @@ class RefSeqCategory:
         try:
             return self.read_h5[self.dataset_key(accession)]
         except Exception:
-            print(f"Failed to read {accession} in {self.name}")
-            return []
+            raise Exception(f"Failed to read {accession} in {self.name}")
+            # print(f"Failed to read {accession} in {self.name}")
+            # return []
 
     def dataset_key(self, accession):
         # Using adler32 for a fast deterministic hash
@@ -179,7 +180,7 @@ class RefSeqCategory:
                 max_files = max(int(m.group(1)), max_files)
         return max_files
 
-    def accessions(self):
+    def get_accessions(self):
         accessions = set()
 
         with h5py.File(self.h5_path(), "a") as h5:
@@ -203,6 +204,8 @@ class RefSeqCategory:
 
             file_indexes = range(max_files)
 
+        accessions = self.get_accessions()
+        print(f"{len(accessions)} sequences already in HDF5 file for {self.name}.")
         with h5py.File(self.h5_path(), "a") as h5:
             for file_index in file_indexes:
                 print(f"Preprocessing file {file_index} from {self.name}", flush=True)
@@ -223,15 +226,15 @@ class RefSeqCategory:
                         dataset_key = self.dataset_key(seq.name)
 
                         # Check if we already have this dataset. If not then add.
-                        if not dataset_key in h5:
-                            print(f"no {dataset_key}")
-                            # dset = h5.create_dataset(
-                            #     dataset_key,
-                            #     data=tensor.dna_seq_to_numpy(seq),
-                            #     dtype="u1",
-                            #     compression="gzip",
-                            #     compression_opts=9,
-                            # )
+                        if not seq.name in accessions:
+                            dset = h5.create_dataset(
+                                dataset_key,
+                                data=tensor.dna_seq_to_numpy(seq),
+                                dtype="u1",
+                                compression="gzip",
+                                compression_opts=9,
+                            )
+                            accessions.add(seq.name)
 
                         result.append( dict(category=self.name, accession=seq.name, file_index=file_index) )
                         if i % 20 == 0:

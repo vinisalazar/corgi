@@ -37,6 +37,7 @@ def train(
     wandb: bool = False,
     wandb_name: str = "",
     fp16: bool = True,
+    distributed: bool = False,
 ):
     """
     Trains a model from a set of fasta files.
@@ -54,7 +55,7 @@ def train(
         wandb.init(project="corgi", name=wandb_name)
 
     dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
-    result = training.train(dls, output_dir=output_dir, epochs=epochs, fp16=fp16)
+    result = training.train(dls, output_dir=output_dir, epochs=epochs, fp16=fp16, distributed=distributed)
     profiling.display_profiling()
     return result
 
@@ -208,19 +209,6 @@ def preprocess(
     output.parent.mkdir(exist_ok=True, parents=True)
     df.to_csv(output)
     print(df)
-
-
-@app.command()
-def accessions(
-    base_dir: Path = None,
-    category: Optional[List[str]] = typer.Option(None),
-):
-    categories = category
-    for category_name in category:
-        category = refseq.RefSeqCategory(name=category_name, base_dir=base_dir)
-        
-        accessions = category.accessions()
-        print(len(accessions))
 
 
 @app.command()

@@ -11,7 +11,7 @@ class ConvRecurrantClassifier(nn.Module):
         embedding_dim=16,
         filters=512,
         kernel_size_cnn=9,
-        lstm_dims=128,
+        lstm_dims=256,
         final_layer_dims=0,  # If this is zero then it isn't used.
         dropout=0.5,
         kernel_size_maxpool=2,

@@ -7,6 +7,7 @@ from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.wandb import WandbCallback
 from fastai.callback.progress import CSVLogger
 from fastai.callback.schedule import fit_one_cycle
+from fastai.distributed import distrib_ctx
 
 import wandb
 
@@ -60,7 +61,8 @@ def train(
     if learner is None:
         learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
 
-    with learn.distrib_ctx() if distributed else nullcontext():
+    print(type(learner), 'type learner')
+    with learner.distrib_ctx() if distributed else nullcontext():
         learner.fit_one_cycle(epochs, cbs=get_callbacks())
     
     learner.export()
