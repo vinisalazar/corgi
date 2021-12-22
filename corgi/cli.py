@@ -38,6 +38,15 @@ def train(
     wandb_name: str = "",
     fp16: bool = True,
     distributed: bool = False,
+    # model parameters (these should not be repeated here)
+    embedding_dim: int =16,
+    filters: int = 512,
+    kernel_size_cnn: int = 9,
+    lstm_dims: int = 256,
+    final_layer_dims: int = 0,  # If this is zero then it isn't used.
+    dropout: float = 0.5,
+    kernel_size_maxpool: int = 2,
+    residual_blocks: bool = False,
 ):
     """
     Trains a model from a set of fasta files.

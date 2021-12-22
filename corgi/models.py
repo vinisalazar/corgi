@@ -71,18 +71,20 @@ class ResidualBlock1D(nn.Module):
 class ConvRecurrantClassifier(nn.Module):
     def __init__(
         self,
-        num_classes=None,
-        num_embeddings=5,
-        embedding_dim=16,
-        filters=512,
-        kernel_size_cnn=9,
-        lstm_dims=256,
-        final_layer_dims=0,  # If this is zero then it isn't used.
-        dropout=0.5,
-        kernel_size_maxpool=2,
+        num_classes,
+        embedding_dim: int =16,
+        filters: int = 512,
+        kernel_size_cnn: int = 9,
+        lstm_dims: int = 256,
+        final_layer_dims: int = 0,  # If this is zero then it isn't used.
+        dropout: float = 0.5,
+        kernel_size_maxpool: int = 2,
         residual_blocks: bool = False,
     ):
         super().__init__()
+        
+        num_embeddings = 5 # i.e. the size of the vocab which is N, A, C, G, T
+
         self.num_classes = num_classes
         self.num_embeddings = num_embeddings
         self.dropout = dropout
@@ -160,6 +162,8 @@ class ConvRecurrantClassifier(nn.Module):
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
         x = x.transpose(1, 2)  
         x = self.cnn_layers(x)
+        # Current shape: batch, filters, seq_len
+        # With batch_first=True, LSTM expects shape: batch, seq, feature
         x = x.transpose(2, 1)
 
         ########################
@@ -167,9 +171,6 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
 
         # BiLSTM
-        # Current shape: batch, filters, seq_len
-        # With batch_first=True, LSTM expects shape: batch, seq, feature
-        x = x.transpose(2, 1)
         output, (h_n, c_n) = self.bi_lstm(x)
         # h_n of shape (num_layers * num_directions, batch, hidden_size)
         # We are using a single layer with 2 directions so the two output vectors are

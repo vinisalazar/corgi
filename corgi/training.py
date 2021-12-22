@@ -17,6 +17,7 @@ def get_learner(
     dls,
     output_dir: (str, Path),
     fp16: bool = True,
+    **kwargs,
 ) -> Learner:
     """
     Creates a fastai learner object.
@@ -25,7 +26,7 @@ def get_learner(
     output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
 
-    model = models.ConvRecurrantClassifier(num_classes=num_classes, lstm_dims=64, residual_blocks=False)
+    model = models.ConvRecurrantClassifier(num_classes=num_classes, **kwargs)
 
     average = "macro"
     metrics = [
@@ -56,10 +57,11 @@ def train(
     epochs: int = 20,
     fp16: bool = True,
     distributed: bool = False,
+    **kwargs,
 ) -> Learner:
 
     if learner is None:
-        learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
+        learner = get_learner(dls, output_dir=output_dir, fp16=fp16, **kwargs)
 
     with learner.distrib_ctx() if distributed else nullcontext():
         learner.fit_one_cycle(epochs, lr_max=1e-4, cbs=get_callbacks())
