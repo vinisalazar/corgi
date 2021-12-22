@@ -72,11 +72,22 @@ class RowToTensorDNA(Transform):
 class RandomSliceBatch(Transform):
     rand_generator = None
 
-    def __init__(self, rand_generator=None):
+    def __init__(self, rand_generator=None, distribution=None, minimum:int = 150, maximum: int=3000):
         self.rand_generator = rand_generator or self.default_rand_generator
+        if distribution is None:
+            from scipy.stats import skewnorm
+            distribution = skewnorm(5, loc=600, scale=1000)
+        self.distribution = distribution
+        self.minimum = minimum
+        self.maximum = maximum
 
     def default_rand_generator(self):
-        return random.randint(150, 3000)
+        # return random.randint(self.minimum, self.maximum)
+
+        seq_len = int(self.distribution.rvs())
+        seq_len = max(self.minimum, seq_len)
+        seq_len = min(self.maximum, seq_len)
+        return seq_len
 
     def encodes(self, batch):
         seq_len = self.rand_generator()
