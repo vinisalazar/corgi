@@ -1,6 +1,71 @@
+from typing import Callable, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
+
+
+def conv3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
+    """ convolution of width 3 with padding"""
+    return nn.Conv1d(
+        in_planes,
+        out_planes,
+        kernel_size=3,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        bias=False,
+        dilation=dilation,
+    )
+
+
+class ResidualBlock1D(nn.Module):
+    """ Adapted from https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py """
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm1d
+
+        if stride != 1:
+            downsample = nn.Sequential(
+                nn.Conv1d(inplanes, planes, kernel_size=1, stride=stride, bias=False),
+                norm_layer(planes),
+            )
+
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
 
 
 class ConvRecurrantClassifier(nn.Module):
@@ -15,6 +80,7 @@ class ConvRecurrantClassifier(nn.Module):
         final_layer_dims=0,  # If this is zero then it isn't used.
         dropout=0.5,
         kernel_size_maxpool=2,
+        residual_blocks: bool = False,
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -35,11 +101,22 @@ class ConvRecurrantClassifier(nn.Module):
         ## Convolutional Layer
         ########################
         self.filters = filters
-        self.kernel_size_cnn = kernel_size_cnn
-        self.cnn_step_1 = nn.Conv1d(
-            in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn
-        )
-        self.max_pool_1 = nn.MaxPool1d(kernel_size=kernel_size_maxpool)
+        self.residual_blocks = residual_blocks
+        self.intermediate_filters = 128
+        if residual_blocks:
+            self.cnn_layers = nn.Sequential(
+                ResidualBlock1D(embedding_dim, embedding_dim),
+                ResidualBlock1D(embedding_dim, self.intermediate_filters, 2),
+                ResidualBlock1D(self.intermediate_filters, self.intermediate_filters),
+                ResidualBlock1D(self.intermediate_filters, filters, 2),
+                ResidualBlock1D(filters, filters),
+            )
+        else:
+            self.kernel_size_cnn = kernel_size_cnn
+            self.cnn_layers = nn.Sequential(
+                nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn),
+                nn.MaxPool1d(kernel_size=kernel_size_maxpool),
+            )
 
         ########################
         ## Recurrent Layer
@@ -80,11 +157,10 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         ## Convolutional Layer
         ########################
-        x = x.transpose(
-            1, 2
-        )  # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
-        x = F.relu(self.cnn_step_1(x))
-        x = self.max_pool_1(x)
+        # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
+        x = x.transpose(1, 2)  
+        x = self.cnn_layers(x)
+        x = x.transpose(2, 1)
 
         ########################
         ## Recurrent Layer

@@ -25,7 +25,7 @@ def get_learner(
     output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
 
-    model = models.ConvRecurrantClassifier(num_classes=num_classes, lstm_dims=64)
+    model = models.ConvRecurrantClassifier(num_classes=num_classes, lstm_dims=64, residual_blocks=False)
 
     average = "macro"
     metrics = [
@@ -44,7 +44,7 @@ def get_learner(
     return learner
 
 def get_callbacks() -> list:
-    callbacks = [SaveModelCallback(monitor='accuracy'), CSVLogger()]
+    callbacks = [SaveModelCallback(monitor='f1_score'), CSVLogger()]
     if wandb.run:
         callbacks.append(WandbCallback())
     return callbacks
@@ -61,9 +61,8 @@ def train(
     if learner is None:
         learner = get_learner(dls, output_dir=output_dir, fp16=fp16)
 
-    print(type(learner), 'type learner')
     with learner.distrib_ctx() if distributed else nullcontext():
-        learner.fit_one_cycle(epochs, cbs=get_callbacks())
+        learner.fit_one_cycle(epochs, lr_max=1e-4, cbs=get_callbacks())
     
     learner.export()
     return learner
