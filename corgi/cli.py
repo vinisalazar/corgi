@@ -31,14 +31,15 @@ def version_callback(value: bool):
 def train(
     output_dir: Path,
     csv: Path,
+    base_dir: Path = None,
     batch_size: int = 64,
     epochs: int = 20,
-    base_dir: Path = None,
-    wandb: bool = False,
-    wandb_name: str = "",
+    lr_max: float = 1e-3,
     fp16: bool = True,
     distributed: bool = False,
-    # model parameters (these should not be repeated here)
+    wandb: bool = False,
+    wandb_name: str = "",
+    # Model parameters (these should not be repeated here)
     embedding_dim: int =16,
     filters: int = 512,
     kernel_size_cnn: int = 9,

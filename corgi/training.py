@@ -55,6 +55,7 @@ def train(
     output_dir: (str, Path), # This should be Union
     learner: Learner = None,
     epochs: int = 20,
+    lr_max: float = 1e-3,
     fp16: bool = True,
     distributed: bool = False,
     **kwargs,
@@ -64,7 +65,7 @@ def train(
         learner = get_learner(dls, output_dir=output_dir, fp16=fp16, **kwargs)
 
     with learner.distrib_ctx() if distributed else nullcontext():
-        learner.fit_one_cycle(epochs, lr_max=1e-4, cbs=get_callbacks())
+        learner.fit_one_cycle(epochs, lr_max=lr_max, cbs=get_callbacks())
     
     learner.export()
     return learner
