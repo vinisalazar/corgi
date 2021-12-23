@@ -1,5 +1,6 @@
 import unittest
 import pandas as pd
+import numpy as np
 from fastai.data.block import DataBlock
 from fastai.data.core import DataLoaders
 
@@ -60,3 +61,27 @@ class TestData(unittest.TestCase):
         dls = test_dls()
         dls.show_batch()
         # just testing if it runs. TODO capture output
+
+
+class TestStratifiedDL(unittest.TestCase):
+    def test_stratified_dl(self):
+        batch_size = 3
+        groups = [
+            [1,2,3],
+            [4,5,6,7,8,9,10],
+            list(range(11,20)),
+        ]
+        dl = dataloaders.StratifiedDL(
+            np.arange(20), 
+            bs=batch_size,
+            groups=groups,
+            shuffle=True,
+        )
+        batches = list(dl)        
+        self.assertEqual(len(batches), 3)
+        for batch in batches:
+            self.assertEqual(batch.shape[0], batch_size)
+            for group in groups:
+                self.assertEqual( len(set(batch.numpy()) & set(group)), 1 )
+
+        

@@ -1,22 +1,61 @@
 import random
+from itertools import chain
+
 import gzip
 import pandas as pd
 from pathlib import Path
 import numpy as np
 
 from Bio import SeqIO
+
 from fastcore.foundation import L
 from fastcore.dispatch import typedispatch
-from fastai.data.core import DataLoaders, get_empty_df
+from fastcore.meta import delegates
+
+from fastai.data.core import TfmdDL, DataLoaders, get_empty_df
 from fastai.callback.data import WeightedDL
 from fastai.data.block import DataBlock, TransformBlock, CategoryBlock
 from fastai.torch_core import display_df
-
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
 from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
 from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA
 from .refseq import RefSeqCategory
+
+
+
+
+
+@delegates()
+class StratifiedDL(TfmdDL):
+    def __init__(self, dataset=None, bs=None, groups=None, **kwargs):
+        super().__init__(dataset=dataset, bs=bs, **kwargs)
+        self.groups = groups
+        self.min_length = None
+        if not self.groups or not self.shuffle:
+            return
+            
+        for group in groups:
+            if self.min_length is None:
+                self.min_length = len(group)
+                continue
+            self.min_length = min(self.min_length, len(group))
+        self.queues = [ self.shuffle_fn(indexes) for indexes in groups ]
+
+    def get_idxs(self):
+        if not self.groups or not self.shuffle:
+            return super().get_idxs()
+
+        epoch_indexes = []        
+        for i, queue in enumerate(self.queues):
+            if len(queue) < self.min_length:
+                queue += self.shuffle_fn( self.groups[i] )
+            
+            epoch_indexes.append( queue[:self.min_length] )
+            self.queues[i] = queue[self.min_length:]
+
+        return list(chain(*zip(*epoch_indexes)))
+        
 
 @typedispatch
 def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kwargs):
