@@ -22,10 +22,12 @@ def get_learner(
     """
     Creates a fastai learner object.
     """
+
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
     num_classes = len(dls.vocab)
 
+    print("Building Model")
     model = models.ConvRecurrantClassifier(num_classes=num_classes, **kwargs)
 
     average = "macro"
@@ -37,9 +39,11 @@ def get_learner(
         RocAuc(average=average),
     ]
 
+    print("Building learner")
     learner = Learner(dls, model, metrics=metrics, path=output_dir)
 
     if fp16:
+        print("Setting floating-point precision of learner to 16 bit")
         learner = learner.to_fp16()
 
     return learner

@@ -34,7 +34,7 @@ def get_sequence_as_tensor(row):
     return TensorDNA(row["sequence"])
 
 
-def create_datablock_refseq(categories, validation_column="validation", validation_prob=0.2) -> DataBlock:
+def create_datablock_refseq(categories, validation_column="validation", validation_prob=0.2, vocab=None) -> DataBlock:
 
     # Check if there is a validation column in the dataset otherwise use a random splitter
     if validation_column:
@@ -43,13 +43,13 @@ def create_datablock_refseq(categories, validation_column="validation", validati
         splitter = RandomSplitter(valid_pct=validation_prob, seed=42)
 
     return DataBlock(
-        blocks=(TransformBlock, CategoryBlock),
+        blocks=(TransformBlock, CategoryBlock(vocab=vocab)),
         splitter=splitter,
         get_y=ColReader("category"),
         item_tfms=RowToTensorDNA(categories),
     )
 
-def create_datablock(seq_length=None, validation_column="validation", validation_prob=0.2) -> DataBlock:
+def create_datablock(seq_length=None, validation_column="validation", validation_prob=0.2, vocab=None) -> DataBlock:
 
     # Check if we need to slice to a specific sequence length
     if seq_length:
@@ -64,7 +64,7 @@ def create_datablock(seq_length=None, validation_column="validation", validation
         splitter = RandomSplitter(valid_pct=validation_prob, seed=42)
 
     return DataBlock(
-        blocks=(TransformBlock, CategoryBlock),
+        blocks=(TransformBlock, CategoryBlock(vocab=vocab)),
         splitter=splitter,
         get_x=get_sequence_as_tensor,
         get_y=ColReader("category"),
@@ -72,7 +72,7 @@ def create_datablock(seq_length=None, validation_column="validation", validation
     )
 
 
-def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, balanced:bool=True, **kwargs) -> DataLoaders:
+def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, balanced:bool=True, verbose:bool=True, **kwargs) -> DataLoaders:
     categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
 
     dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
@@ -81,19 +81,25 @@ def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, b
     if validation_column not in df:
         validation_column=None
 
-    datablock = create_datablock_refseq(categories, validation_column=validation_column, **kwargs)
-
+    print("Creating Datablock")
+    vocab = df['category'].unique()
+    datablock = create_datablock_refseq(categories, validation_column=validation_column, vocab=vocab, **kwargs)
+    
     if balanced and validation_column in df:
+        print("Creating weights for balancing dataset")
         train_df = df[ df[validation_column] == 0 ]
         weights = np.zeros( (len(train_df),) )
         value_counts = train_df['category'].value_counts()
         for name in df.category.unique():
-            weights[ train_df['category'] == name ] = value_counts.max()/value_counts[name]
+            weight = value_counts.max()/value_counts[name]
+            print(f"\tWeight for {name}: {weight}")
+            weights[ train_df['category'] == name ] = weight
         
         dataloaders_kwargs['dl_type'] = WeightedDL
         dataloaders_kwargs['dl_kwargs'] = [dict(wgts=weights),dict()]
 
-    return datablock.dataloaders(df, **dataloaders_kwargs)
+    print("Creating Dataloaders")
+    return datablock.dataloaders(df, verbose=verbose, **dataloaders_kwargs)
 
 def create_dataloaders(df: pd.DataFrame, batch_size=64, **kwargs) -> DataLoaders:
     datablock = create_datablock(**kwargs)
