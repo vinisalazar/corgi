@@ -30,17 +30,17 @@ from .refseq import RefSeqCategory
 class StratifiedDL(TfmdDL):
     def __init__(self, dataset=None, bs=None, groups=None, **kwargs):
         super().__init__(dataset=dataset, bs=bs, **kwargs)
-        self.groups = groups
+        self.groups = [list(group) for group in groups] if groups else None
         self.min_length = None
         if not self.groups or not self.shuffle:
             return
             
-        for group in groups:
+        for group in self.groups:
             if self.min_length is None:
                 self.min_length = len(group)
                 continue
             self.min_length = min(self.min_length, len(group))
-        self.queues = [ self.shuffle_fn(indexes) for indexes in groups ]
+        self.queues = [ self.shuffle_fn(indexes) for indexes in self.groups ]
 
     def get_idxs(self):
         if not self.groups or not self.shuffle:
@@ -55,7 +55,7 @@ class StratifiedDL(TfmdDL):
             self.queues[i] = queue[self.min_length:]
 
         return list(chain(*zip(*epoch_indexes)))
-        
+
 
 @typedispatch
 def show_batch(x: TensorDNA, y, samples, ctxs=None, max_n=20, trunc_at=150, **kwargs):
@@ -125,17 +125,15 @@ def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, b
     datablock = create_datablock_refseq(categories, validation_column=validation_column, vocab=vocab, **kwargs)
     
     if balanced and validation_column in df:
-        print("Creating weights for balancing dataset")
-        train_df = df[ df[validation_column] == 0 ]
-        weights = np.zeros( (len(train_df),) )
-        value_counts = train_df['category'].value_counts()
-        for name in df.category.unique():
-            weight = value_counts.max()/value_counts[name]
-            print(f"\tWeight for {name}: {weight}")
-            weights[ train_df['category'] == name ] = weight
+        print("Creating groups for balancing dataset")
+        training_df = df[df[validation_column] == 0].reset_index()
+        groups = [
+            training_df.index[ training_df['category'] == name ]
+            for name in vocab
+        ]
         
-        dataloaders_kwargs['dl_type'] = WeightedDL
-        dataloaders_kwargs['dl_kwargs'] = [dict(wgts=weights),dict()]
+        dataloaders_kwargs['dl_type'] = StratifiedDL
+        dataloaders_kwargs['dl_kwargs'] = [dict(groups=groups),dict()]
 
     print("Creating Dataloaders")
     return datablock.dataloaders(df, verbose=verbose, **dataloaders_kwargs)
