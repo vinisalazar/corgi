@@ -41,6 +41,7 @@ class StratifiedDL(TfmdDL):
                 continue
             self.min_length = min(self.min_length, len(group))
         self.queues = [ self.shuffle_fn(indexes) for indexes in self.groups ]
+        self.n = self.min_length * len(self.queues)
 
     def get_idxs(self):
         if not self.groups or not self.shuffle:
