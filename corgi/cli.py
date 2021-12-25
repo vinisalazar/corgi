@@ -30,7 +30,7 @@ def version_callback(value: bool):
 @app.command()
 def train(
     output_dir: Path,
-    csv: Path,
+    dataframe: Path,
     base_dir: Path = None,
     batch_size: int = 64,
     epochs: int = 20,
@@ -40,6 +40,7 @@ def train(
     wandb: bool = False,
     wandb_name: str = "",
     # Model parameters (these should not be repeated here)
+    # Can I use the delegate class from fastcore?
     embedding_dim: int =16,
     filters: int = 512,
     kernel_size_cnn: int = 9,
@@ -52,11 +53,15 @@ def train(
     """
     Trains a model from a set of fasta files.
     """
-    print('Training using:\t', csv)
+    print('Training using:\t', dataframe)
     print('Outputting to: \t', output_dir)
 
-    df = pd.read_csv(csv)
-    print(f'Training on {len(df)} sequences.')
+    if dataframe.suffix == ".parquet":
+        df = pd.read_parquet(str(dataframe), engine="pyarrow")
+    else:
+        df = pd.read_csv(str(dataframe))    
+
+    print(f'Dataframe has {len(df)} sequences.')
 
     if wandb:
         import wandb
@@ -65,7 +70,21 @@ def train(
         wandb.init(project="corgi", name=wandb_name)
 
     dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
-    result = training.train(dls, output_dir=output_dir, epochs=epochs, fp16=fp16, distributed=distributed)
+    result = training.train(
+        dls, 
+        output_dir=output_dir, 
+        epochs=epochs, 
+        fp16=fp16, 
+        distributed=distributed,
+        embedding_dim=embedding_dim,
+        filters=filters,
+        kernel_size_cnn=kernel_size_cnn,
+        lstm_dims=lstm_dims,
+        final_layer_dims=final_layer_dims,
+        dropout=dropout,
+        kernel_size_maxpool=kernel_size_maxpool,
+        residual_blocks=residual_blocks,
+    )
     profiling.display_profiling()
     return result
 
