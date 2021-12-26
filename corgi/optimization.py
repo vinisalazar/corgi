@@ -1,5 +1,5 @@
 import optuna
-
+from fastai.learner import Learner
 from . import training
 
 
@@ -25,7 +25,7 @@ def optimize(
         )
 
         # Return metric from recorder
-        return leaner.recorder
+        return learner.recorder
 
     study = optuna.create_study()
     study.optimize(objective)

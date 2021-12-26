@@ -1,3 +1,4 @@
+from enum import Enum
 import random
 from itertools import chain
 
@@ -40,7 +41,7 @@ class StratifiedDL(TfmdDL):
                 self.min_length = len(group)
                 continue
             self.min_length = min(self.min_length, len(group))
-        self.queues = [ self.shuffle_fn(indexes) for indexes in self.groups ]
+        self.queues = [ self.shuffle_fn(group) for group in self.groups ]
         self.n = self.min_length * len(self.queues)
 
     def get_idxs(self):
@@ -112,7 +113,20 @@ def create_datablock(seq_length=None, validation_column="validation", validation
     )
 
 
-def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, balanced:bool=True, verbose:bool=True, **kwargs) -> DataLoaders:
+class DataloaderType(Enum):
+    PLAIN = 0
+    WEIGHTED = 1
+    STRATIFIED = 2
+
+
+def create_dataloaders_refseq(
+    df: pd.DataFrame, 
+    base_dir: Path, 
+    batch_size=64, 
+    dataloader_type:DataloaderType=DataloaderType.WEIGHTED, 
+    verbose:bool=True, 
+    **kwargs
+) -> DataLoaders:
     categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
 
     dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
@@ -125,16 +139,29 @@ def create_dataloaders_refseq(df: pd.DataFrame, base_dir: Path, batch_size=64, b
     vocab = df['category'].unique()
     datablock = create_datablock_refseq(categories, validation_column=validation_column, vocab=vocab, **kwargs)
     
-    if balanced and validation_column in df:
-        print("Creating groups for balancing dataset")
+    if validation_column in df:
         training_df = df[df[validation_column] == 0].reset_index()
-        groups = [
-            training_df.index[ training_df['category'] == name ]
-            for name in vocab
-        ]
-        
-        dataloaders_kwargs['dl_type'] = StratifiedDL
-        dataloaders_kwargs['dl_kwargs'] = [dict(groups=groups),dict()]
+
+        if dataloader_type == DataloaderType.STRATIFIED:
+            print("Creating groups for balancing dataset")
+            groups = [
+                training_df.index[ training_df['category'] == name ]
+                for name in vocab
+            ]
+            
+            dataloaders_kwargs['dl_type'] = StratifiedDL
+            dataloaders_kwargs['dl_kwargs'] = [dict(groups=groups),dict()]
+        elif dataloader_type == DataloaderType.WEIGHTED:
+            print("Creating weights for balancing dataset")
+            weights = np.zeros( (len(training_df),) )
+            value_counts = training_df['category'].value_counts()
+            for name in df.category.unique():
+                weight = value_counts.max()/value_counts[name]
+                print(f"\tWeight for {name}: {weight}")
+                weights[ training_df['category'] == name ] = weight
+            
+            dataloaders_kwargs['dl_type'] = WeightedDL
+            dataloaders_kwargs['dl_kwargs'] = [dict(wgts=weights),dict()]
 
     print("Creating Dataloaders")
     return datablock.dataloaders(df, verbose=verbose, **dataloaders_kwargs)
