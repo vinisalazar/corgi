@@ -22,7 +22,7 @@ def optimize(
         lr_max = trial.suggest_float("lr_max", 1e-5, 1e-2, log=True)
         embedding_dim = trial.suggest_int("embedding_dim", 4, 32)
         dropout = trial.suggest_float("dropout", 0.0, 1.0)
-        lstm_dims = trial.suggest_int("lstm_dims", 32, 4096, log=True)
+        lstm_dims = trial.suggest_int("lstm_dims", 32, 2024, log=True)
         kernel_size_cnn = trial.suggest_int("kernel_size_cnn", 3, 15, step=2)
 
         trial_name = f"trial-{trial.number}"
@@ -45,7 +45,9 @@ def optimize(
         )
 
         # Return metric from recorder
-        metric_value = max(map(lambda row: row.get(metric), learner.recorder.values))
+        # The slice is there because 'epoch' is prepended to the list but it isn't included in the values
+        metric_index = learner.recorder.metric_names[1:].index(metric) 
+        metric_value = max(map(lambda row: row[metric_index], learner.recorder.values))
         return metric_value
 
     study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True)
