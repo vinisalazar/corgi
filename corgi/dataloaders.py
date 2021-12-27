@@ -119,11 +119,29 @@ class DataloaderType(Enum):
     STRATIFIED = 2
 
 
+def create_dataloaders_refseq_path(
+    dataframe_path: Path, 
+    base_dir: Path, 
+    batch_size=64, 
+    **kwargs
+):
+    print('Training using:\t', dataframe_path)
+
+    if dataframe_path.suffix == ".parquet":
+        df = pd.read_parquet(str(dataframe_path), engine="pyarrow")
+    else:
+        df = pd.read_csv(str(dataframe_path))    
+
+    print(f'Dataframe has {len(df)} sequences.')
+    dls = create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir, **kwargs )
+    return dls
+
+
 def create_dataloaders_refseq(
     df: pd.DataFrame, 
     base_dir: Path, 
     batch_size=64, 
-    dataloader_type:DataloaderType=DataloaderType.WEIGHTED, 
+    dataloader_type:DataloaderType=DataloaderType.STRATIFIED, 
     verbose:bool=True, 
     **kwargs
 ) -> DataLoaders:

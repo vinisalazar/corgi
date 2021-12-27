@@ -13,6 +13,7 @@ def optimize(
     metric: str="f1_score",
     epochs: int = 20,
     fp16: bool = True,
+    wandb: bool=True,
 ):
     output_dir = Path(output_dir)
 
@@ -24,10 +25,16 @@ def optimize(
         lstm_dims = trial.suggest_int("lstm_dims", 32, 4096, log=True)
         kernel_size_cnn = trial.suggest_int("kernel_size_cnn", 3, 15, step=2)
 
+        trial_name = f"trial-{trial.number}"
+
+        if wandb:
+            import wandb as wandblib
+            wandblib.init(project=trial.study.study_name, name=trial_name, reinit=True)
+
         # Train
         learner = training.train(
             dls,
-            output_dir=output_dir/f"trial-{trial.trial_id}",
+            output_dir=output_dir/trial.study.study_name/trial_name,
             fp16=fp16,
             epochs=epochs,
             lr_max=lr_max,

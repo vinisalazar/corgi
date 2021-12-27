@@ -21,3 +21,9 @@ class TestModels(unittest.TestCase):
         x = tensor.TensorDNA(np.zeros((64, 100)))
         y = self.model(x)
         self.assertEqual(y.shape, (64, 5))
+
+    def test_lstm_none(self):
+        model = models.ConvRecurrantClassifier(5, lstm_dims=0)        
+        x = tensor.TensorDNA(np.zeros((64, 100)))
+        y = self.model(x)
+        self.assertEqual(y.shape, (64, 5))

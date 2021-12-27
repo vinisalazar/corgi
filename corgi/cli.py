@@ -1,4 +1,5 @@
 from os import mkdir
+from click.core import batch
 import typer
 from pathlib import Path
 from typing import List
@@ -10,7 +11,7 @@ from fastcore.transform import Pipeline
 
 from fastai.learner import load_learner
 
-from . import training, dataloaders, profiling, preprocessing, refseq
+from . import training, dataloaders, profiling, preprocessing, optimization
 from .transforms import SliceTransform
 
 app = typer.Typer()
@@ -51,17 +52,10 @@ def train(
     residual_blocks: bool = False,
 ):
     """
-    Trains a model from a set of fasta files.
+    Trains a model from a preprocessed.
     """
-    print('Training using:\t', dataframe)
+    dls = dataloaders.create_dataloaders_refseq_path(dataframe, base_dir=base_dir, batch_size=batch_size)
     print('Outputting to: \t', output_dir)
-
-    if dataframe.suffix == ".parquet":
-        df = pd.read_parquet(str(dataframe), engine="pyarrow")
-    else:
-        df = pd.read_csv(str(dataframe))    
-
-    print(f'Dataframe has {len(df)} sequences.')
 
     if wandb:
         import wandb
@@ -69,13 +63,13 @@ def train(
             wandb_name = output_dir.name
         wandb.init(project="corgi", name=wandb_name)
 
-    dls = dataloaders.create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir )
-    result = training.train(
+    learner = training.train(
         dls, 
         output_dir=output_dir, 
         epochs=epochs, 
         fp16=fp16, 
         distributed=distributed,
+        lr_max=lr_max,
         embedding_dim=embedding_dim,
         filters=filters,
         kernel_size_cnn=kernel_size_cnn,
@@ -86,7 +80,41 @@ def train(
         residual_blocks=residual_blocks,
     )
     profiling.display_profiling()
-    return result
+    return learner
+
+
+@app.command()
+def optimize(
+    output_dir: Path,
+    study_name: str,
+    dataframe: Path,
+    n_trials: int,
+    base_dir: Path = None,
+    batch_size: int = 64,
+    storage_name: str="sqlite:///corgi-studies.db",
+    epochs: int = 20,
+    fp16: bool = True,
+    wandb: bool = True,
+):
+    """
+    Optimizes hyperparameters.
+    """
+    dls = dataloaders.create_dataloaders_refseq_path(dataframe, base_dir=base_dir, batch_size=batch_size)
+    print('Outputting to: \t', output_dir)
+
+    study = optimization.optimize(
+        dls, 
+        output_dir=output_dir,
+        n_trials=n_trials,    
+        study_name=study_name,
+        storage_name=storage_name,
+        epochs=epochs,
+        fp16=fp16,
+        wandb=wandb,
+    )
+
+    profiling.display_profiling()
+    return study
 
 
 @app.command()

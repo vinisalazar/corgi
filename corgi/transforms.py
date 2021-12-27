@@ -72,7 +72,7 @@ class RowToTensorDNA(Transform):
 class RandomSliceBatch(Transform):
     rand_generator = None
 
-    def __init__(self, rand_generator=None, distribution=None, minimum:int = 150, maximum: int=3000):
+    def __init__(self, rand_generator=None, distribution=None, minimum:int = 150, maximum: int=3_000):
         self.rand_generator = rand_generator or self.default_rand_generator
         if distribution is None:
             from scipy.stats import skewnorm
