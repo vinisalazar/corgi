@@ -124,14 +124,18 @@ class ConvRecurrantClassifier(nn.Module):
         ## Recurrent Layer
         ########################
         self.lstm_dims = lstm_dims
-        self.bi_lstm = nn.LSTM(
-            input_size=filters,  # Is this dimension? - this should receive output from maxpool
-            hidden_size=lstm_dims,
-            bidirectional=True,
-            bias=True,
-            batch_first=True,
-        )
-        current_dims = lstm_dims * 2
+        if lstm_dims:
+            self.bi_lstm = nn.LSTM(
+                input_size=filters,  # Is this dimension? - this should receive output from maxpool
+                hidden_size=lstm_dims,
+                bidirectional=True,
+                bias=True,
+                batch_first=True,
+            )
+            current_dims = lstm_dims * 2
+        else:
+            current_dims = filters
+
         if final_layer_dims:
             self.fc1 = nn.Linear(
                 in_features=current_dims,
@@ -171,12 +175,16 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
 
         # BiLSTM
-        output, (h_n, c_n) = self.bi_lstm(x)
-        # h_n of shape (num_layers * num_directions, batch, hidden_size)
-        # We are using a single layer with 2 directions so the two output vectors are
-        # [0,:,:] and [1,:,:]
-        # [0,:,:] -> considers the first index from the first dimension
-        x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
+        if self.lstm_dims:
+            output, (h_n, c_n) = self.bi_lstm(x)
+            # h_n of shape (num_layers * num_directions, batch, hidden_size)
+            # We are using a single layer with 2 directions so the two output vectors are
+            # [0,:,:] and [1,:,:]
+            # [0,:,:] -> considers the first index from the first dimension
+            x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
+        else:
+            # if there is no recurrent layer then simply sum over sequence dimension
+            x = torch.sum(x,dim=1)
 
         #################################
         ## Linear Layer(s) to Predictions
