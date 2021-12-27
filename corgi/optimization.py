@@ -56,7 +56,9 @@ def optimize(
         )
 
         # Return metric from recorder
-        metric_value = max(map(lambda row: row.get(metric), learner.recorder.values))
+        # The slice is there because 'epoch' is prepended to the list but it isn't included in the values
+        metric_index = learner.recorder.metric_names[1:].index(metric) 
+        metric_value = max(map(lambda row: row[metric_index], learner.recorder.values))
         return metric_value
 
     study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True)
