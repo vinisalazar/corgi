@@ -22,14 +22,25 @@ def optimize(
         lr_max = trial.suggest_float("lr_max", 1e-5, 1e-2, log=True)
         embedding_dim = trial.suggest_int("embedding_dim", 4, 32)
         dropout = trial.suggest_float("dropout", 0.0, 1.0)
-        lstm_dims = trial.suggest_int("lstm_dims", 32, 2024, log=True)
-        kernel_size_cnn = trial.suggest_int("kernel_size_cnn", 3, 15, step=2)
+        lstm_dims = trial.suggest_int("lstm_dims", 32, 2048, log=True)
+        kernel_size_cnn = trial.suggest_int("kernel_size_cnn", 3, 13, step=2)
 
         trial_name = f"trial-{trial.number}"
 
         if wandb:
             import wandb as wandblib
-            wandblib.init(project=trial.study.study_name, name=trial_name, reinit=True)
+            wandblib.init(
+                project=trial.study.study_name, 
+                name=trial_name, 
+                reinit=True,
+                config=dict(
+                    lr_max=lr_max,
+                    embedding_dim=embedding_dim,
+                    dropout=dropout,
+                    lstm_dims=lstm_dims,
+                    kernel_size_cnn=kernel_size_cnn,
+                )
+            )
 
         # Train
         learner = training.train(
