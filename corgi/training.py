@@ -1,10 +1,11 @@
 from contextlib import nullcontext
 from pathlib import Path
+import time
 
 from fastai.learner import Learner
 from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
 from fastai.callback.tracker import SaveModelCallback
-from fastai.callback.core import FetchPredsCallback
+from fastai.callback.core import FetchPredsCallback, Callback
 from fastai.callback.wandb import WandbCallback, log_model
 from fastai.callback.progress import CSVLogger
 from fastai.callback.schedule import fit_one_cycle
@@ -14,21 +15,12 @@ import wandb
 
 from . import models
 
-class WandbCallbackTime(WandbCallback):
+class WandbCallbackTime(Callback):
+    def __init__(self, wandb_callback):
+        self.wandb_callback = wandb_callback
+
     def after_epoch(self):
-        "Log validation loss and custom metrics & log prediction samples"
-        # Correct any epoch rounding error and overwrite value
-        self._wandb_epoch = round(self._wandb_epoch)
-        wandb.log({'epoch': self._wandb_epoch}, step=self._wandb_step)
-        # Log sample predictions
-        if self.log_preds:
-            try:
-                self.log_predictions(self.learn.fetch_preds.preds)
-            except Exception as e:
-                self.log_preds = False
-                self.remove_cb(FetchPredsCallback)
-                print(f'WandbCallback was not able to get prediction samples -> {e}')
-        wandb.log({n:s for n,s in zip(self.recorder.metric_names, self.recorder.log) if n not in ['train_loss', 'epoch']}, step=self._wandb_step)
+        wandb.log({'time': time.time() - self.recorder.start_epoch}, step=self.wandb_callback._wandb_step)
 
 
 def get_learner(
@@ -69,7 +61,8 @@ def get_learner(
 def get_callbacks() -> list:
     callbacks = [SaveModelCallback(monitor='f1_score'), CSVLogger()]
     if wandb.run:
-        callbacks.append(WandbCallbackTime())
+        wandb_callback = WandbCallback()
+        callbacks.extend([wandb_callback, WandbCallbackTime(wandb_callback=wandb_callback)])
     return callbacks
 
 def train(
