@@ -4,13 +4,14 @@ from fastai.learner import Learner
 from . import training
 
 
-def optimize(
+def tune(
     dls,
     output_dir: (str, Path), # This should be Union
-    n_trials: int,    
+    n_trials: int=1,    
     study_name: str=None,
-    storage_name: str="sqlite:///corgi-studies.db",
+    storage: str="sqlite:///corgi-tuning.db",
     metric: str="f1_score",
+    direction: str="maximize",
     epochs: int = 20,
     fp16: bool = True,
     wandb: bool=True,
@@ -61,7 +62,7 @@ def optimize(
         metric_value = max(map(lambda row: row[metric_index], learner.recorder.values))
         return metric_value
 
-    study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True)
+    study = optuna.create_study(study_name=study_name, storage=storage, load_if_exists=True, direction=direction)
     study.optimize(objective, n_trials=n_trials)
     return study
 

@@ -11,7 +11,7 @@ from fastcore.transform import Pipeline
 
 from fastai.learner import load_learner
 
-from . import training, dataloaders, profiling, preprocessing, optimization
+from . import training, dataloaders, profiling, preprocessing, tuning
 from .transforms import SliceTransform
 
 app = typer.Typer()
@@ -84,14 +84,14 @@ def train(
 
 
 @app.command()
-def optimize(
+def tune(
     output_dir: Path,
     study_name: str,
     dataframe: Path,
-    n_trials: int,
+    n_trials: int=1,
     base_dir: Path = None,
     batch_size: int = 64,
-    storage_name: str="sqlite:///corgi-studies.db",
+    storage: str="sqlite:///corgi-tuning.db",
     epochs: int = 20,
     fp16: bool = True,
     wandb: bool = True,
@@ -102,12 +102,12 @@ def optimize(
     dls = dataloaders.create_dataloaders_refseq_path(dataframe, base_dir=base_dir, batch_size=batch_size)
     print('Outputting to: \t', output_dir)
 
-    study = optimization.optimize(
+    study = tuning.tune(
         dls, 
         output_dir=output_dir,
         n_trials=n_trials,    
         study_name=study_name,
-        storage_name=storage_name,
+        storage=storage,
         epochs=epochs,
         fp16=fp16,
         wandb=wandb,
