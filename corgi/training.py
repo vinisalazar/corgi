@@ -58,11 +58,14 @@ def get_learner(
 
     return learner
 
-def get_callbacks() -> list:
+def get_callbacks(other_callbacks=None) -> list:
     callbacks = [SaveModelCallback(monitor='f1_score'), CSVLogger()]
     if wandb.run:
         wandb_callback = WandbCallback()
         callbacks.extend([wandb_callback, WandbCallbackTime(wandb_callback=wandb_callback)])
+    if other_callbacks:
+        callbacks.extend(other_callbacks)
+
     return callbacks
 
 def train(
@@ -73,6 +76,7 @@ def train(
     lr_max: float = 1e-3,
     fp16: bool = True,
     distributed: bool = False,
+    callbacks = None,
     **kwargs,
 ) -> Learner:
 
@@ -80,7 +84,7 @@ def train(
         learner = get_learner(dls, output_dir=output_dir, fp16=fp16, **kwargs)
 
     with learner.distrib_ctx() if distributed else nullcontext():
-        learner.fit_one_cycle(epochs, lr_max=lr_max, cbs=get_callbacks())
+        learner.fit_one_cycle(epochs, lr_max=lr_max, cbs=get_callbacks(callbacks))
     
     learner.export()
     return learner

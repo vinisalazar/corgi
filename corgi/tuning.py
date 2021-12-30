@@ -1,5 +1,7 @@
 from pathlib import Path
 import optuna
+from optuna.integration import FastAIV2PruningCallback
+
 from fastai.learner import Learner
 from . import training
 
@@ -43,6 +45,8 @@ def tune(
                 )
             )
 
+        callbacks = [FastAIV2PruningCallback(trial, monitor=metric)]
+
         # Train
         learner = training.train(
             dls,
@@ -54,6 +58,7 @@ def tune(
             embedding_dim=embedding_dim,
             lstm_dims=lstm_dims,
             kernel_size_cnn=kernel_size_cnn,
+            callbacks=callbacks,
         )
 
         # Return metric from recorder
