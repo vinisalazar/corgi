@@ -88,7 +88,7 @@ def tune(
     output_dir: Path,
     study_name: str,
     dataframe: Path,
-    n_trials: int=1,
+    trials: int=1,
     base_dir: Path = None,
     batch_size: int = 64,
     storage: str="sqlite:///corgi-tuning.db",
@@ -105,7 +105,7 @@ def tune(
     study = tuning.tune(
         dls, 
         output_dir=output_dir,
-        n_trials=n_trials,    
+        trials=trials,    
         study_name=study_name,
         storage=storage,
         epochs=epochs,

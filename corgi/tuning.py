@@ -7,7 +7,7 @@ from . import training
 def tune(
     dls,
     output_dir: (str, Path), # This should be Union
-    n_trials: int=1,    
+    trials: int=1,    
     study_name: str=None,
     storage: str="sqlite:///corgi-tuning.db",
     metric: str="f1_score",
@@ -63,6 +63,6 @@ def tune(
         return metric_value
 
     study = optuna.create_study(study_name=study_name, storage=storage, load_if_exists=True, direction=direction)
-    study.optimize(objective, n_trials=n_trials)
+    study.optimize(objective, n_trials=trials)
     return study
 
