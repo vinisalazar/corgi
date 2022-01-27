@@ -73,8 +73,8 @@ class ConvRecurrantClassifier(nn.Module):
         self,
         num_classes,
         embedding_dim: int =16,
-        filters: int = 512,
-        kernel_size_cnn: int = 9,
+        filters: int=256,
+        cnn_layers: int = 6,
         lstm_dims: int = 256,
         final_layer_dims: int = 0,  # If this is zero then it isn't used.
         dropout: float = 0.5,
@@ -102,23 +102,37 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         ## Convolutional Layer
         ########################
-        self.filters = filters
-        self.residual_blocks = residual_blocks
-        self.intermediate_filters = 128
-        if residual_blocks:
-            self.cnn_layers = nn.Sequential(
-                ResidualBlock1D(embedding_dim, embedding_dim),
-                ResidualBlock1D(embedding_dim, self.intermediate_filters, 2),
-                ResidualBlock1D(self.intermediate_filters, self.intermediate_filters),
-                ResidualBlock1D(self.intermediate_filters, filters, 2),
-                ResidualBlock1D(filters, filters),
+
+        kernel_size = 1
+        convolutions = []
+        for _ in range(cnn_layers):
+            convolutions.append(
+                nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size, padding='same')
             )
-        else:
-            self.kernel_size_cnn = kernel_size_cnn
-            self.cnn_layers = nn.Sequential(
-                nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn),
-                nn.MaxPool1d(kernel_size=kernel_size_maxpool),
-            )
+            kernel_size += 2
+        
+        self.convolutions = nn.ModuleList(convolutions)
+        self.pool = nn.MaxPool1d(kernel_size=kernel_size_maxpool)
+        current_dims = filters * cnn_layers
+        
+        # self.filters = filters
+        # self.residual_blocks = residual_blocks
+        # self.intermediate_filters = 128
+        # if residual_blocks:
+        #     self.cnn_layers = nn.Sequential(
+        #         ResidualBlock1D(embedding_dim, embedding_dim),
+        #         ResidualBlock1D(embedding_dim, self.intermediate_filters, 2),
+        #         ResidualBlock1D(self.intermediate_filters, self.intermediate_filters),
+        #         ResidualBlock1D(self.intermediate_filters, filters, 2),
+        #         ResidualBlock1D(filters, filters),
+        #     )
+        # else:
+        #     self.kernel_size_cnn = kernel_size_cnn
+        #     self.cnn_layers = nn.Sequential(
+        #         nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn),
+        #         nn.MaxPool1d(kernel_size=kernel_size_maxpool),
+        #     )
+        # current_dims = filters
 
         ########################
         ## Recurrent Layer
@@ -126,15 +140,13 @@ class ConvRecurrantClassifier(nn.Module):
         self.lstm_dims = lstm_dims
         if lstm_dims:
             self.bi_lstm = nn.LSTM(
-                input_size=filters,  # Is this dimension? - this should receive output from maxpool
+                input_size=current_dims,  # Is this dimension? - this should receive output from maxpool
                 hidden_size=lstm_dims,
                 bidirectional=True,
                 bias=True,
                 batch_first=True,
             )
             current_dims = lstm_dims * 2
-        else:
-            current_dims = filters
 
         if final_layer_dims:
             self.fc1 = nn.Linear(
@@ -165,7 +177,11 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
         x = x.transpose(1, 2)  
-        x = self.cnn_layers(x)
+
+        x = torch.cat([conv(x) for conv in self.convolutions], dim=-1)
+        x = self.pool(x)
+
+        # x = self.cnn_layers(x)
         # Current shape: batch, filters, seq_len
         # With batch_first=True, LSTM expects shape: batch, seq, feature
         x = x.transpose(2, 1)

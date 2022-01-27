@@ -43,7 +43,7 @@ def train(
     # Model parameters (these should not be repeated here)
     # Can I use the delegate class from fastcore?
     embedding_dim: int =16,
-    filters: int = 512,
+    filters: int = 256,
     kernel_size_cnn: int = 9,
     lstm_dims: int = 256,
     final_layer_dims: int = 0,  # If this is zero then it isn't used.
