@@ -7,8 +7,6 @@ int_to_vocab = dict(zip(vocab_to_int.values(), vocab_to_int.keys()))
 
 
 class TensorDNA(TensorBase):
-    dtype = torch.uint8
-
     def __str__(self):
         # return str(self.tolist())[:50]
         items = self.tolist()
@@ -53,4 +51,5 @@ def dna_seq_to_tensor(seq) -> TensorDNA:
     Should this be a pipeline?
     Can we use the ToTensor transform in fastai?
     """
-    return TensorDNA(dna_seq_to_numpy(seq))
+    t = TensorDNA(dna_seq_to_numpy(seq))
+    return t

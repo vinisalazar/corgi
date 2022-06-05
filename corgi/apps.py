@@ -10,11 +10,11 @@ from . import dataloaders, models, refseq
 
 class Corgi(fa.FastApp):
     """
-    Classifier for ORganelle Genomes
+    corgi - Classifier for ORganelle Genomes
     """
     def __init__(self):
         super().__init__()
-        self.categories = refseq.REFSEQ_CATEGORIES
+        self.categories = refseq.REFSEQ_CATEGORIES # If 
 
     def dataloaders(
         self,

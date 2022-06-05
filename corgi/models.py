@@ -171,6 +171,7 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         # Cast as pytorch tensor
         # x = Tensor(x)
+        # breakpoint()
 
         # Convert to int because it may be simply a byte
         x = x.int()
