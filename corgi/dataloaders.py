@@ -125,8 +125,9 @@ def create_dataloaders_refseq_path(
     batch_size=64, 
     **kwargs
 ):
-    print('Training using:\t', dataframe_path)
+    dataframe_path = Path(dataframe_path)
 
+    print('Training using:\t', dataframe_path)
     if dataframe_path.suffix == ".parquet":
         df = pd.read_parquet(str(dataframe_path), engine="pyarrow")
     else:

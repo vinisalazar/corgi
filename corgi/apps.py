@@ -18,8 +18,8 @@ class Corgi(fa.FastApp):
 
     def dataloaders(
         self,
-        dataframe: Path,
-        base_dir: Path,
+        csv:Path = fa.Param(help="The CSV which has the sequences to use."),
+        base_dir:Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
         batch_size:int = fa.Param(default=32, help="The batch size."),
     ) -> DataLoaders:
         """
@@ -29,9 +29,13 @@ class Corgi(fa.FastApp):
             inputs (Path): The input file.
             batch_size (int): The number of elements to use in a batch for training and prediction. Defaults to 32.
         """
-        dls = dataloaders.create_dataloaders_refseq_path(dataframe, base_dir=base_dir, batch_size=batch_size)
+        if csv is None:
+            raise Exception("No CSV given")
+        if base_dir is None:
+            raise Exception("No base_dir given")
+        dls = dataloaders.create_dataloaders_refseq_path(csv, base_dir=base_dir, batch_size=batch_size)
         self.categories = dls.vocab
-        raise dls
+        return dls
 
     def model(
         self,
