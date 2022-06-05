@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "corgi"
-version = "0.1.0"
+version = "0.2.0"
 description = "Classifier for ORganelle Genomes"
 authors = ["Robert Turnbull <robert.turnbull@unimelb.edu.au>"]
-license = "Apache"
+license = "Apache Software License 2.0"
+readme = "README.rst"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
+fastapp = {git = "https://github.com/rbturnbull/fastapp.git", branch = "main"}
 biopython = "^1.79"
 fastai = "^2.4.1"
 dask = "^2021.7.1"
@@ -14,7 +16,6 @@ progressbar2 = "^3.53.1"
 h5py = "^3.1.0"
 humanize = "^3.10.0"
 pyarrow = "^4.0.1"
-typer = "^0.3.2"
 plotly = "^5.3.1"
 appdirs = "^1.4.4"
 beautifulsoup4 = "^4.10.0"
@@ -25,17 +26,29 @@ cryptography = "^36.0.1"
 PyMySQL = "^1.0.2"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.4"
-ipykernel = "^6.0.3"
-nbdev = "^1.1.19"
+pytest = "^6.2.5"
+ipykernel = "^6.6.1"
 coverage = "^5.5"
-pre-commit = "^2.14.0"
-snakeviz = "^2.1.1"
+autopep8 = "^1.5.7"
+Sphinx = "^4.2.0"
+nbsphinx = "^0.8.7"
+sphinx-rtd-theme = "^1.0.0"
+sphinx-autobuild = "^2021.3.14"
+myst-parser = "^0.15.2"
+pre-commit = "^2.15.0"
+sphinx-copybutton = "^0.4.0"
+black = "^21.10b0"
+sphinx-click = {git = "https://github.com/rbturnbull/sphinx-click.git"}
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = [
+    "tests",
+]
 
 [build-system]
-requires = ["setuptools >= 40.6.0", "poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-corgi = 'corgi.cli:app'
+corgi = "corgi.apps:Corgi.main"

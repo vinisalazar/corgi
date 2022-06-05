@@ -1,5 +1,5 @@
 import unittest
-import numpy as np
+import torch
 
 from corgi import models, tensor
 
@@ -18,12 +18,13 @@ class TestModels(unittest.TestCase):
         self.assertIn("Linear", model_str)
 
     def test_model_output(self):
-        x = tensor.TensorDNA(np.zeros((64, 100)))
+        x = torch.ones((64, 100), dtype=torch.uint8) # batch, seq_len
+        # x = tensor.TensorDNA(x) 
         y = self.model(x)
         self.assertEqual(y.shape, (64, 5))
 
     def test_lstm_none(self):
         model = models.ConvRecurrantClassifier(5, lstm_dims=0)        
-        x = tensor.TensorDNA(np.zeros((64, 100)))
-        y = self.model(x)
+        x = torch.ones((64, 100), dtype=torch.uint8) # batch, seq_len
+        y = model(x)
         self.assertEqual(y.shape, (64, 5))

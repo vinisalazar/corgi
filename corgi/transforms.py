@@ -65,6 +65,11 @@ class RowToTensorDNA(Transform):
         self.category_dict = {category.name: category for category in categories}
 
     def encodes(self, row: pd.Series):
+        # print('row', row)
+        # print('type sequence', type(row['sequence']))
+        # print(' sequence', row['sequence'])
+        # import pdb; pdb.set_trace()
+        # return row['sequence'] # hack
         return TensorDNA(self.category_dict[row['category']].get_seq(row["accession"]))
 
 
@@ -91,8 +96,17 @@ class RandomSliceBatch(Transform):
 
     def encodes(self, batch):
         seq_len = self.rand_generator()
-
+        # seq_len = 150 # hack
         def slice(tensor):
-            return (slice_tensor(tensor[0], seq_len), tensor[1])
+            return (slice_tensor(tensor[0], seq_len),) + tensor[1:]
 
         return list(map(slice, batch))
+
+
+class ShortRandomSliceBatch(RandomSliceBatch):
+
+    def __init__(self, rand_generator=None, distribution=None, minimum:int = 80, maximum: int=150):
+        if distribution is None:
+            from scipy.stats import uniform
+            distribution = uniform(loc=minimum, scale=maximum-minimum)
+        super().__init__(rand_generator=rand_generator, distribution=distribution, minimum=minimum, maximum=maximum)

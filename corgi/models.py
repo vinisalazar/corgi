@@ -75,6 +75,7 @@ class ConvRecurrantClassifier(nn.Module):
         embedding_dim: int =16,
         filters: int=256,
         cnn_layers: int = 6,
+        kernel_size_cnn: int = 9,
         lstm_dims: int = 256,
         final_layer_dims: int = 0,  # If this is zero then it isn't used.
         dropout: float = 0.5,
@@ -103,7 +104,7 @@ class ConvRecurrantClassifier(nn.Module):
         ## Convolutional Layer
         ########################
 
-        kernel_size = 1
+        kernel_size = 5
         convolutions = []
         for _ in range(cnn_layers):
             convolutions.append(
@@ -168,7 +169,10 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         ## Embedding
         ########################
-        # Cast as int because it may be simply a byte
+        # Cast as pytorch tensor
+        # x = Tensor(x)
+
+        # Convert to int because it may be simply a byte
         x = x.int()
         x = self.embed(x)
 
@@ -178,7 +182,9 @@ class ConvRecurrantClassifier(nn.Module):
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
         x = x.transpose(1, 2)  
 
-        x = torch.cat([conv(x) for conv in self.convolutions], dim=-1)
+        conv_results = [conv(x) for conv in self.convolutions]
+        x = torch.cat(conv_results, dim=-2)
+
         x = self.pool(x)
 
         # x = self.cnn_layers(x)
