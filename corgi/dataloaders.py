@@ -245,3 +245,21 @@ def create_dataloaders_from_fastas(fasta_paths, batch_size=64, seq_length=None, 
     """
     df = fastas_to_dataframe(fasta_paths, **kwargs)
     return create_dataloaders(df, batch_size=batch_size, seq_length=seq_length)
+
+
+class FastaDataloader:
+    def __init__(self, fasta_files, device):
+        self.fasta_files = list(fasta_files)
+        self.device = device
+
+    def __iter__(self):
+        self.randomize()
+        self.before_iter()
+        self.__idxs = self.get_idxs()  # called in context of main process (not workers/subprocesses)
+        for b in _loaders[self.fake_l.num_workers == 0](self.fake_l):
+            if self.device is not None:
+                b = to_device(b, self.device)
+            yield self.after_batch(b)
+        self.after_iter()
+        if hasattr(self, 'it'):
+            del self.it

@@ -4,10 +4,13 @@ from torch import nn
 import torch
 import pandas as pd
 from fastai.data.core import DataLoaders
+from fastapp.util import copy_func, call_func, change_typer_to_defaults, add_kwargs
 from fastai.learner import Learner, load_learner
 from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
 import fastapp as fa
 from rich.console import Console
+from rich.table import Table
+from rich.box import SIMPLE
 
 console = Console()
 
@@ -22,6 +25,10 @@ class Corgi(fa.FastApp):
     def __init__(self):
         super().__init__()
         self.categories = refseq.REFSEQ_CATEGORIES  # This will be overridden by the dataloader
+        self.category_counts = self.copy_method(self.category_counts)
+        add_kwargs(to_func=self.category_counts, from_funcs=self.dataloaders)
+        self.category_counts_cli = self.copy_method(self.category_counts)
+        change_typer_to_defaults(self.category_counts)
 
     def dataloaders(
         self,
@@ -125,3 +132,30 @@ class Corgi(fa.FastApp):
 
         console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
         results_df.to_csv(output_csv)
+
+    def category_counts_dataloader(self, dataloader, description):
+        from collections import Counter
+
+        counter = Counter()
+        for batch in dataloader:
+            counter.update(batch[1].cpu().numpy())
+        total = sum(counter.values())
+
+        table = Table(title=f"{description}: Categories in epoch", box=SIMPLE)
+
+        table.add_column("Category", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Count", justify="center")
+        table.add_column("Percentage")
+
+        for category_id, category in enumerate(self.categories):
+            count = counter[category_id]
+            table.add_row(category, str(count), f"{count/total*100:.1f}%")
+
+        table.add_row("Total", str(total), "")
+
+        console.print(table)
+
+    def category_counts(self, **kwargs):
+        dataloaders = call_func(self.dataloaders, **kwargs)
+        self.category_counts_dataloader(dataloaders.train, "Training")
+        self.category_counts_dataloader(dataloaders.valid, "Validation")

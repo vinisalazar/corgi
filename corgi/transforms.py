@@ -70,7 +70,8 @@ class RowToTensorDNA(Transform):
         # print('type sequence', type(row['sequence']))
         # print(' sequence', row['sequence'])
         # import pdb; pdb.set_trace()
-        # return row['sequence'] # hack
+        if 'sequence' in row:
+            return row['sequence']  # hack
         return TensorDNA(self.category_dict[row['category']].get_seq(row["accession"]))
 
 
@@ -98,7 +99,8 @@ class RandomSliceBatch(Transform):
 
     def encodes(self, batch):
         seq_len = self.rand_generator()
-        # seq_len = 150 # hack
+        seq_len = 150  # hack
+
         def slice(tensor):
             return (slice_tensor(tensor[0], seq_len),) + tensor[1:]
 
