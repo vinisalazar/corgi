@@ -1,6 +1,10 @@
 from pathlib import Path
+from typing import List
 from torch import nn
+import torch
+import pandas as pd
 from fastai.data.core import DataLoaders
+from fastai.learner import Learner, load_learner
 from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
 import fastapp as fa
 from rich.console import Console
@@ -17,7 +21,7 @@ class Corgi(fa.FastApp):
 
     def __init__(self):
         super().__init__()
-        self.categories = refseq.REFSEQ_CATEGORIES  # If
+        self.categories = refseq.REFSEQ_CATEGORIES  # This will be overridden by the dataloader
 
     def dataloaders(
         self,
@@ -43,7 +47,7 @@ class Corgi(fa.FastApp):
     def model(
         self,
         embedding_dim: int = fa.Param(
-            default=16, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."
+            default=8, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."
         ),
         filters: int = fa.Param(
             default=256,
@@ -87,3 +91,37 @@ class Corgi(fa.FastApp):
 
     def monitor(self):
         return "f1_score"
+
+    def inference_dataloader(
+        self,
+        learner,
+        fasta: List[Path] = fa.Param(None, help="A fasta file with sequences to be classified."),
+        max_seqs: int = None,
+        **kwargs,
+    ):
+        df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)
+        dataloader = learner.dls.test_dl(df)
+        self.categories = learner.dls.vocab
+        self.inference_df = df
+        return dataloader
+
+    def output_results(
+        self,
+        results,
+        output_csv: Path = fa.Param(default=None, help="A path to output the results as a CSV."),
+        **kwargs,
+    ):
+        results_df = pd.concat(
+            [self.inference_df, pd.DataFrame(results[0].numpy(), columns=self.categories)],
+            axis=1,
+        )
+
+        predictions = torch.argmax(results[0], dim=1)
+        results_df['prediction'] = [self.categories[p] for p in predictions]
+
+        results_df = results_df.drop(['sequence', 'validation', 'category'], axis=1)
+        if not output_csv:
+            raise Exception("No output file given.")
+
+        console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
+        results_df.to_csv(output_csv)

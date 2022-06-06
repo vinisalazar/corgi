@@ -73,7 +73,7 @@ class ConvRecurrantClassifier(nn.Module):
     def __init__(
         self,
         num_classes,
-        embedding_dim: int = 16,
+        embedding_dim: int = 8,
         filters: int = 256,
         cnn_layers: int = 6,
         kernel_size_cnn: int = 9,
