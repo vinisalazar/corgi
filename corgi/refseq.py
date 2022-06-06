@@ -22,19 +22,20 @@ from . import tensor
 
 
 REFSEQ_CATEGORIES = [
-    "archaea",              # prokaryotic
-    "bacteria",             # prokaryotic
-    "fungi",                # eukaryotic
-    "invertebrate",         # eukaryotic
-    "mitochondrion",        # organellar
-    "plant",                # eukaryotic
-    "plasmid", 
-    "plastid",              # organellar
-    "protozoa",             # eukaryotic
-    "vertebrate_mammalian", # eukaryotic
-    "vertebrate_other",     # eukaryotic
-    "viral",                # viral
+    "archaea",  # prokaryotic
+    "bacteria",  # prokaryotic
+    "fungi",  # eukaryotic
+    "invertebrate",  # eukaryotic
+    "mitochondrion",  # organellar
+    "plant",  # eukaryotic
+    "plasmid",
+    "plastid",  # organellar
+    "protozoa",  # eukaryotic
+    "vertebrate_mammalian",  # eukaryotic
+    "vertebrate_other",  # eukaryotic
+    "viral",  # viral
 ]
+
 
 def root_dir():
     """
@@ -46,7 +47,7 @@ def root_dir():
 
 
 def global_data_dir():
-    """ Returns the path to the directory to hold all the data from the VBA website. """
+    """Returns the path to the directory to hold all the data from the VBA website."""
     return root_dir() / "data"
 
 
@@ -72,18 +73,18 @@ class RefSeqCategory:
         return f"https://ftp.ncbi.nlm.nih.gov/refseq/release/{self.name}"
 
     def filename(self, index) -> str:
-        """ The filename in the RefSeq database for this index. """
+        """The filename in the RefSeq database for this index."""
         if self.max_files:
             assert index < self.max_files
 
         return f"{self.name}.{index+1}.1.genomic.fna.gz"
 
     def fasta_url(self, index: int) -> str:
-        """ The url for the fasta file for this index online. """
+        """The url for the fasta file for this index online."""
         return f"{self.base_url()}/{self.filename(index)}"
 
     def index_html(self):
-        index_path = Path(user_data_dir())/f"{self.name}.index.html"
+        index_path = Path(user_data_dir()) / f"{self.name}.index.html"
         if not index_path.exists():
             url = self.base_url()
             print("Downloading:", url)
@@ -95,13 +96,13 @@ class RefSeqCategory:
 
     async def download(self, index: int):
         local_path = self.fasta_path(index, download=False)
-        
+
         if not local_path.exists():
             limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
             async with httpx.AsyncClient(limits=limits) as client:
                 url = self.fasta_url(index)
                 print(f"downloading {url}")
-                response = await client.get(url)    
+                response = await client.get(url)
                 open(local_path, 'wb').write(response.content)
                 print(f"done {local_path}")
         return local_path
@@ -217,7 +218,7 @@ class RefSeqCategory:
                     # If it fails, then assume it doesn't exist and exit
                     print(f"Fasta file at index {file_index} for {self.name} not found.")
                     continue
-                    
+
                 with gzip.open(fasta_path, "rt") as fasta:
                     if show_bar:
                         bar = progressbar.ProgressBar(max_value=seq_count - 1)
@@ -236,17 +237,17 @@ class RefSeqCategory:
                             )
                             accessions.add(seq.name)
 
-                        result.append( dict(category=self.name, accession=seq.name, file_index=file_index) )
+                        result.append(dict(category=self.name, accession=seq.name, file_index=file_index))
                         if i % 20 == 0:
                             if show_bar:
                                 bar.update(i)
                     if show_bar:
                         bar.update(i)
                 print()
-        
+
         df = pd.DataFrame(result)
         return df
-        
+
     def h5_filesize(self) -> str:
         return filesize_readable(self.h5_path())
 
@@ -271,4 +272,3 @@ class RefSeqCategory:
     # def df(self):
     #     data = []
     #     with h5py.File(self.h5_path(), "r") as h5:
-

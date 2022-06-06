@@ -7,7 +7,7 @@ from torch import Tensor
 
 
 def conv3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
-    """ convolution of width 3 with padding"""
+    """convolution of width 3 with padding"""
     return nn.Conv1d(
         in_planes,
         out_planes,
@@ -21,7 +21,8 @@ def conv3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dil
 
 
 class ResidualBlock1D(nn.Module):
-    """ Adapted from https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py """
+    """Adapted from https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py"""
+
     def __init__(
         self,
         inplanes: int,
@@ -72,8 +73,8 @@ class ConvRecurrantClassifier(nn.Module):
     def __init__(
         self,
         num_classes,
-        embedding_dim: int =16,
-        filters: int=256,
+        embedding_dim: int = 16,
+        filters: int = 256,
         cnn_layers: int = 6,
         kernel_size_cnn: int = 9,
         lstm_dims: int = 256,
@@ -83,8 +84,8 @@ class ConvRecurrantClassifier(nn.Module):
         residual_blocks: bool = False,
     ):
         super().__init__()
-        
-        num_embeddings = 5 # i.e. the size of the vocab which is N, A, C, G, T
+
+        num_embeddings = 5  # i.e. the size of the vocab which is N, A, C, G, T
 
         self.num_classes = num_classes
         self.num_embeddings = num_embeddings
@@ -108,14 +109,14 @@ class ConvRecurrantClassifier(nn.Module):
         convolutions = []
         for _ in range(cnn_layers):
             convolutions.append(
-                nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size, padding='same')
+                nn.Conv1d(in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size, padding='same')
             )
             kernel_size += 2
-        
+
         self.convolutions = nn.ModuleList(convolutions)
         self.pool = nn.MaxPool1d(kernel_size=kernel_size_maxpool)
         current_dims = filters * cnn_layers
-        
+
         # self.filters = filters
         # self.residual_blocks = residual_blocks
         # self.intermediate_filters = 128
@@ -181,7 +182,7 @@ class ConvRecurrantClassifier(nn.Module):
         ## Convolutional Layer
         ########################
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
-        x = x.transpose(1, 2)  
+        x = x.transpose(1, 2)
 
         conv_results = [conv(x) for conv in self.convolutions]
         x = torch.cat(conv_results, dim=-2)
@@ -207,7 +208,7 @@ class ConvRecurrantClassifier(nn.Module):
             x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
         else:
             # if there is no recurrent layer then simply sum over sequence dimension
-            x = torch.sum(x,dim=1)
+            x = torch.sum(x, dim=1)
 
         #################################
         ## Linear Layer(s) to Predictions

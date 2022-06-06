@@ -1,8 +1,10 @@
 import logging
 
+
 def display_profiling():
     try:
         import resource
+
         usage = resource.getrusage(resource.RUSAGE_SELF)
         print("Profiling:")
         print(f"System Time: {usage.ru_stime:.4g}s")

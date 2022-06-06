@@ -4,23 +4,26 @@ from fastai.data.core import DataLoaders
 from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
 import fastapp as fa
 from rich.console import Console
+
 console = Console()
 
 from . import dataloaders, models, refseq
+
 
 class Corgi(fa.FastApp):
     """
     corgi - Classifier for ORganelle Genomes
     """
+
     def __init__(self):
         super().__init__()
-        self.categories = refseq.REFSEQ_CATEGORIES # If 
+        self.categories = refseq.REFSEQ_CATEGORIES  # If
 
     def dataloaders(
         self,
-        csv:Path = fa.Param(help="The CSV which has the sequences to use."),
-        base_dir:Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
-        batch_size:int = fa.Param(default=32, help="The batch size."),
+        csv: Path = fa.Param(help="The CSV which has the sequences to use."),
+        base_dir: Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
+        batch_size: int = fa.Param(default=32, help="The batch size."),
     ) -> DataLoaders:
         """
         Creates a FastAI DataLoaders object which Corgi uses in training and prediction.
@@ -39,12 +42,19 @@ class Corgi(fa.FastApp):
 
     def model(
         self,
-        embedding_dim: int = fa.Param(default=16, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."),
-        filters: int = fa.Param(default=256, help="The number of filters in each of the 1D convolution layers. These are concatenated together"),
+        embedding_dim: int = fa.Param(
+            default=16, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."
+        ),
+        filters: int = fa.Param(
+            default=256,
+            help="The number of filters in each of the 1D convolution layers. These are concatenated together",
+        ),
         cnn_layers: int = fa.Param(default=6, help="The number of 1D convolution layers."),
         kernel_size_maxpool: int = fa.Param(default=2, help="The size of the pooling before going to the LSTM."),
         lstm_dims: int = fa.Param(default=256, help="The size of the hidden layers in the LSTM in both directions."),
-        final_layer_dims: int = fa.Param(default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."),
+        final_layer_dims: int = fa.Param(
+            default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
+        ),
         dropout: float = fa.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
     ) -> nn.Module:
         """
@@ -68,7 +78,7 @@ class Corgi(fa.FastApp):
     def metrics(self):
         average = "macro"
         return [
-            accuracy, 
+            accuracy,
             F1Score(average=average),
             Precision(average=average),
             Recall(average=average),

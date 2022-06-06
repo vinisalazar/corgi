@@ -37,10 +37,11 @@ class SliceTransform(Transform):
 
 
 VOCAB = "NACGT"
-CHAR_TO_INT = dict(zip( VOCAB, range(len(VOCAB) ) ))
+CHAR_TO_INT = dict(zip(VOCAB, range(len(VOCAB))))
+
 
 def char_to_int(c):
-    return CHAR_TO_INT.get(c, 0)    
+    return CHAR_TO_INT.get(c, 0)
 
 
 class CharsToTensorDNA(Transform):
@@ -57,7 +58,7 @@ class CharsToTensorDNA(Transform):
         seq_as_numpy = seq_as_numpy[seq_as_numpy < len(CHAR_TO_INT)]
 
         return TensorDNA(seq_as_numpy)
-     
+
 
 class RowToTensorDNA(Transform):
     def __init__(self, categories, **kwargs):
@@ -73,14 +74,15 @@ class RowToTensorDNA(Transform):
         return TensorDNA(self.category_dict[row['category']].get_seq(row["accession"]))
 
 
-@dataclass # why is this a dataclass??
+@dataclass  # why is this a dataclass??
 class RandomSliceBatch(Transform):
     rand_generator = None
 
-    def __init__(self, rand_generator=None, distribution=None, minimum:int = 150, maximum: int=3_000):
+    def __init__(self, rand_generator=None, distribution=None, minimum: int = 150, maximum: int = 3_000):
         self.rand_generator = rand_generator or self.default_rand_generator
         if distribution is None:
             from scipy.stats import skewnorm
+
             distribution = skewnorm(5, loc=600, scale=1000)
         self.distribution = distribution
         self.minimum = minimum
@@ -104,9 +106,9 @@ class RandomSliceBatch(Transform):
 
 
 class ShortRandomSliceBatch(RandomSliceBatch):
-
-    def __init__(self, rand_generator=None, distribution=None, minimum:int = 80, maximum: int=150):
+    def __init__(self, rand_generator=None, distribution=None, minimum: int = 80, maximum: int = 150):
         if distribution is None:
             from scipy.stats import uniform
-            distribution = uniform(loc=minimum, scale=maximum-minimum)
+
+            distribution = uniform(loc=minimum, scale=maximum - minimum)
         super().__init__(rand_generator=rand_generator, distribution=distribution, minimum=minimum, maximum=maximum)
