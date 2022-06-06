@@ -39,14 +39,13 @@ class Corgi(fa.FastApp):
 
     def model(
         self,
-        embedding_dim: int =16,
-        filters: int=256,
-        cnn_layers: int = 6,
-        lstm_dims: int = 256,
-        final_layer_dims: int = 0,  # If this is zero then it isn't used.
-        dropout: float = 0.5,
-        kernel_size_maxpool: int = 2,
-        residual_blocks: bool = False,
+        embedding_dim: int = fa.Param(default=16, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."),
+        filters: int = fa.Param(default=256, help="The number of filters in each of the 1D convolution layers. These are concatenated together"),
+        cnn_layers: int = fa.Param(default=6, help="The number of 1D convolution layers."),
+        kernel_size_maxpool: int = fa.Param(default=2, help="The size of the pooling before going to the LSTM."),
+        lstm_dims: int = fa.Param(default=256, help="The size of the hidden layers in the LSTM in both directions."),
+        final_layer_dims: int = fa.Param(default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."),
+        dropout: float = fa.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
     ) -> nn.Module:
         """
         Creates a deep learning model for the Corgi to use.
@@ -64,7 +63,6 @@ class Corgi(fa.FastApp):
             final_layer_dims=final_layer_dims,
             dropout=dropout,
             kernel_size_maxpool=kernel_size_maxpool,
-            residual_blocks=residual_blocks,
         )
 
     def metrics(self):

@@ -22,18 +22,18 @@ from . import tensor
 
 
 REFSEQ_CATEGORIES = [
-    "archaea",
-    "bacteria",
-    "fungi",
-    "invertebrate",
-    "mitochondrion",
-    "plant",
-    "plasmid",
-    "plastid",
-    "protozoa",
-    "vertebrate_mammalian",
-    "vertebrate_other",
-    "viral",
+    "archaea",              # prokaryotic
+    "bacteria",             # prokaryotic
+    "fungi",                # eukaryotic
+    "invertebrate",         # eukaryotic
+    "mitochondrion",        # organellar
+    "plant",                # eukaryotic
+    "plasmid", 
+    "plastid",              # organellar
+    "protozoa",             # eukaryotic
+    "vertebrate_mammalian", # eukaryotic
+    "vertebrate_other",     # eukaryotic
+    "viral",                # viral
 ]
 
 def root_dir():

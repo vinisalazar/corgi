@@ -18,15 +18,22 @@ output:
       --csv PATH                      The CSV which has the sequences to use.
       --base-dir PATH                 The base directory with the RefSeq HDF5 files.
       --batch-size INTEGER            The batch size.  [default: 32]
-      --embedding-dim INTEGER         [default: 16]
-      --filters INTEGER               [default: 256]
-      --cnn-layers INTEGER            [default: 6]
-      --lstm-dims INTEGER             [default: 256]
-      --final-layer-dims INTEGER      [default: 0]
-      --dropout FLOAT                 [default: 0.5]
-      --kernel-size-maxpool INTEGER   [default: 2]
-      --residual-blocks / --no-residual-blocks
-                                      [default: no-residual-blocks]
+      --embedding-dim INTEGER         The size of the embeddings for the nucleotides
+                                      (N, A, G, C, T).  [default: 16]
+      --filters INTEGER               The number of filters in each of the 1D
+                                      convolution layers. These are concatenated
+                                      together  [default: 256]
+      --cnn-layers INTEGER            The number of 1D convolution layers.
+                                      [default: 6]
+      --kernel-size-maxpool INTEGER   The size of the pooling before going to the
+                                      LSTM.  [default: 2]
+      --lstm-dims INTEGER             The size of the hidden layers in the LSTM in
+                                      both directions.  [default: 256]
+      --final-layer-dims INTEGER      The size of a dense layer after the LSTM. If
+                                      this is zero then this layer isn't used.
+                                      [default: 0]
+      --dropout FLOAT                 The amount of dropout to use. (not currently
+                                      enabled)  [default: 0.5]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by
