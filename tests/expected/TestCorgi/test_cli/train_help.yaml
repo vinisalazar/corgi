@@ -19,7 +19,7 @@ output:
       --base-dir PATH                 The base directory with the RefSeq HDF5 files.
       --batch-size INTEGER            The batch size.  [default: 32]
       --embedding-dim INTEGER         The size of the embeddings for the nucleotides
-                                      (N, A, G, C, T).  [default: 16]
+                                      (N, A, G, C, T).  [default: 8]
       --filters INTEGER               The number of filters in each of the 1D
                                       convolution layers. These are concatenated
                                       together  [default: 256]
