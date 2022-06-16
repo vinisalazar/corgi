@@ -215,7 +215,6 @@ def fasta_to_dataframe(
             validation_from_filename = False
 
     seqs = SeqIO.parse(fasta, "fasta")
-
     for seq_index, seq in enumerate(seqs):
         if max_seqs and seq_index >= max_seqs:
             break
@@ -223,7 +222,7 @@ def fasta_to_dataframe(
         if not validation_from_filename:
             validation = int(random.random() < validation_prob)
 
-        seq_as_numpy = dna_seq_to_tensor(seq)
+        seq_as_numpy = dna_seq_to_tensor(seq.seq)
         data.append([seq.id, seq.description, seq_as_numpy, validation])
 
     fasta.close()

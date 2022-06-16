@@ -139,6 +139,7 @@ class Corgi(fa.FastApp):
         else:
             print("No output file given.")
 
+        # Output bar chart
         from termgraph.module import Data, BarChart, Args
 
         value_counts = results_df['prediction'].value_counts()
