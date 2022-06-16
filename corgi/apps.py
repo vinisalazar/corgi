@@ -139,7 +139,18 @@ class Corgi(fa.FastApp):
         else:
             print("No output file given.")
 
-        print(results_df)
+        from termgraph.module import Data, BarChart, Args
+
+        value_counts = results_df['prediction'].value_counts()
+        data = Data([[count] for count in value_counts], value_counts.index)
+        chart = BarChart(
+            data,
+            Args(
+                space_between=False,
+            ),
+        )
+
+        chart.draw()
 
     def category_counts_dataloader(self, dataloader, description):
         from collections import Counter
