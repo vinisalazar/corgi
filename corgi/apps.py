@@ -19,7 +19,7 @@ from . import dataloaders, models, refseq
 
 class Corgi(fa.FastApp):
     """
-    corgi - Classifier for ORganelle Genomes
+    corgi - Classifier for ORganelle Genomes Inter alia
     """
 
     def __init__(self):
@@ -118,20 +118,28 @@ class Corgi(fa.FastApp):
         output_csv: Path = fa.Param(default=None, help="A path to output the results as a CSV."),
         **kwargs,
     ):
+        predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
         results_df = pd.concat(
-            [self.inference_df, pd.DataFrame(results[0].numpy(), columns=self.categories)],
+            [self.inference_df, predictions_df],
             axis=1,
         )
 
         predictions = torch.argmax(results[0], dim=1)
+        columns = set(predictions_df.columns)
+
         results_df['prediction'] = [self.categories[p] for p in predictions]
+        results_df['eukaryotic'] = predictions_df[list(columns & set(refseq.EUKARYOTIC))].sum(axis=1)
+        results_df['prokaryotic'] = predictions_df[list(columns & set(refseq.PROKARYOTIC))].sum(axis=1)
+        results_df['organellar'] = predictions_df[list(columns & set(refseq.ORGANELLAR))].sum(axis=1)
 
         results_df = results_df.drop(['sequence', 'validation', 'category'], axis=1)
-        if not output_csv:
-            raise Exception("No output file given.")
+        if output_csv:
+            console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
+            results_df.to_csv(output_csv, index=False)
+        else:
+            print("No output file given.")
 
-        console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
-        results_df.to_csv(output_csv)
+        print(results_df)
 
     def category_counts_dataloader(self, dataloader, description):
         from collections import Counter

@@ -82,6 +82,7 @@ class ConvRecurrantClassifier(nn.Module):
         dropout: float = 0.5,
         kernel_size_maxpool: int = 2,
         residual_blocks: bool = False,
+        final_bias: bool = True,
     ):
         super().__init__()
 
@@ -164,6 +165,7 @@ class ConvRecurrantClassifier(nn.Module):
         self.logits = nn.Linear(
             in_features=current_dims,
             out_features=self.num_classes,
+            bias=final_bias,
         )
 
     def forward(self, x):

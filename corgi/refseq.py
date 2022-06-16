@@ -36,6 +36,23 @@ REFSEQ_CATEGORIES = [
     "viral",  # viral
 ]
 
+PROKARYOTIC = (
+    "archaea",
+    "bacteria",
+)
+EUKARYOTIC = (
+    "fungi",
+    "invertebrate",
+    "plant",
+    "protozoa",
+    "vertebrate_mammalian",
+    "vertebrate_other",
+)
+ORGANELLAR = (
+    "mitochondrion",
+    "plastid",
+)
+
 
 def root_dir():
     """

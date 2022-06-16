@@ -26,7 +26,7 @@ corgi
         
 .. end-badges
 
-Classifier for ORganelle Genomes
+Classifier for ORganelle Genomes Inter alia
 
 Credits
 ==================================
