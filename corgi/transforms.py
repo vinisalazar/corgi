@@ -99,7 +99,7 @@ class RandomSliceBatch(Transform):
 
     def encodes(self, batch):
         seq_len = self.rand_generator()
-        seq_len = 150  # hack
+        # seq_len = 150  # hack
 
         def slice(tensor):
             return (slice_tensor(tensor[0], seq_len),) + tensor[1:]
@@ -114,3 +114,16 @@ class ShortRandomSliceBatch(RandomSliceBatch):
 
             distribution = uniform(loc=minimum, scale=maximum - minimum)
         super().__init__(rand_generator=rand_generator, distribution=distribution, minimum=minimum, maximum=maximum)
+
+
+class PadBatch(Transform):
+    def encodes(self, batch):
+
+        max_len = 0
+        for item in batch:
+            max_len = max(item[0].shape[0], max_len)
+
+        def pad(tensor):
+            return (slice_tensor(tensor[0], max_len),) + tensor[1:]
+
+        return list(map(pad, batch))

@@ -12,9 +12,11 @@ from rich.console import Console
 from rich.table import Table
 from rich.box import SIMPLE
 
+from fastai.losses import CrossEntropyLossFlat
+
 console = Console()
 
-from . import dataloaders, models, refseq
+from . import dataloaders, models, refseq, transforms
 
 
 class Corgi(fa.FastApp):
@@ -99,6 +101,9 @@ class Corgi(fa.FastApp):
     def monitor(self):
         return "f1_score"
 
+    # def loss_func(self, label_smoothing:float=fa.Param(0.1, help="The amount of label smoothing.")):
+    #     return CrossEntropyLossFlat(label_smoothing=label_smoothing)
+
     def inference_dataloader(
         self,
         learner,
@@ -106,8 +111,9 @@ class Corgi(fa.FastApp):
         max_seqs: int = None,
         **kwargs,
     ):
-        df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)
+        df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
         dataloader = learner.dls.test_dl(df)
+        dataloader.before_batch.fs = [transforms.PadBatch()]
         self.categories = learner.dls.vocab
         self.inference_df = df
         return dataloader

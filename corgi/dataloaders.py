@@ -135,7 +135,7 @@ def create_dataloaders_refseq(
     df: pd.DataFrame,
     base_dir: Path,
     batch_size=64,
-    dataloader_type: DataloaderType = DataloaderType.STRATIFIED,
+    dataloader_type: DataloaderType = DataloaderType.PLAIN,
     verbose: bool = True,
     **kwargs,
 ) -> DataLoaders:
