@@ -37,6 +37,7 @@ class Corgi(fa.FastApp):
         csv: Path = fa.Param(help="The CSV which has the sequences to use."),
         base_dir: Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
         batch_size: int = fa.Param(default=32, help="The batch size."),
+        # dataloader_type: DataloaderType = fa.Param(default=DataloaderType.PLAIN),
     ) -> DataLoaders:
         """
         Creates a FastAI DataLoaders object which Corgi uses in training and prediction.

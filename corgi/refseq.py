@@ -1,5 +1,5 @@
 from zlib import adler32
-
+import time
 from dataclasses import dataclass
 from os import access
 import urllib.request
@@ -19,6 +19,12 @@ from bs4 import BeautifulSoup
 
 from pathlib import Path
 from . import tensor
+
+
+def open_fasta(fasta_path, use_gzip):
+    if use_gzip:
+        return gzip.open(fasta_path, "rt")
+    return open(fasta_path, "rt")
 
 
 REFSEQ_CATEGORIES = [
@@ -236,30 +242,7 @@ class RefSeqCategory:
                     print(f"Fasta file at index {file_index} for {self.name} not found.")
                     continue
 
-                with gzip.open(fasta_path, "rt") as fasta:
-                    if show_bar:
-                        bar = progressbar.ProgressBar(max_value=seq_count - 1)
-                    seqs = SeqIO.parse(fasta, "fasta")
-                    for i, seq in enumerate(seqs):
-                        dataset_key = self.dataset_key(seq.name)
-
-                        # Check if we already have this dataset. If not then add.
-                        if not seq.name in accessions:
-                            dset = h5.create_dataset(
-                                dataset_key,
-                                data=tensor.dna_seq_to_numpy(seq),
-                                dtype="u1",
-                                compression="gzip",
-                                compression_opts=9,
-                            )
-                            accessions.add(seq.name)
-
-                        result.append(dict(category=self.name, accession=seq.name, file_index=file_index))
-                        if i % 20 == 0:
-                            if show_bar:
-                                bar.update(i)
-                    if show_bar:
-                        bar.update(i)
+                result.extend(self.import_fasta(fasta_path, h5, show_bar=True))
                 print()
 
         df = pd.DataFrame(result)
@@ -286,6 +269,121 @@ class RefSeqCategory:
     def total_fasta_filesize_server(self) -> str:
         return humanize.naturalsize(self.total_fasta_filesize_server_bytes())
 
-    # def df(self):
-    #     data = []
-    #     with h5py.File(self.h5_path(), "r") as h5:
+    def add_ncbi_datasets(self, accessions, base_dir):
+        results = []
+        all_accessions = self.get_accessions()
+
+        with h5py.File(self.h5_path(), "a") as h5:
+            for accession in accessions:
+                path = base_dir / "ncbi_dataset/data" / accession
+                for fasta_path in path.glob("*.fna"):
+                    print(fasta_path)
+                    results.extend(
+                        self.import_fasta(fasta_path, h5, show_bar=True, accessions=all_accessions, use_gzip=False)
+                    )
+
+        df = pd.DataFrame(results)
+        return df
+
+    def add_individual_accessions(self, accessions, email=None):
+        results = []
+        all_accessions = self.get_accessions()
+
+        with h5py.File(self.h5_path(), "a") as h5:
+            for accession in accessions:
+                fasta_path = self.individual_accession_path(accession, email=email)
+                if fasta_path:
+                    results.extend(self.import_fasta(fasta_path, h5, show_bar=False, accessions=all_accessions))
+
+        df = pd.DataFrame(results)
+        return df
+
+    def individual_accession_path(self, accession: str, download: bool = True, email=None) -> Path:
+        local_path = Path(self.base_dir) / self.name / "individual" / f"{accession}.fa.gz"
+        local_path.parent.mkdir(exist_ok=True, parents=True)
+        db = "nucleotide"
+        if download and not local_path.exists():
+            from Bio import Entrez
+
+            if email:
+                Entrez.email = email
+            else:
+                raise Exception("no email provided")
+
+            print(f"Trying to download '{accession}'")
+            try:
+                print("trying nucleotide database")
+                net_handle = Entrez.efetch(db="nucleotide", id=accession, rettype="fasta", retmode="text")
+            except Exception as err:
+                print(f'failed {err}')
+                print("trying genome database")
+                time.sleep(3)
+                try:
+                    net_handle = Entrez.efetch(db="genome", id=accession, rettype="fasta", retmode="text")
+                except Exception as err:
+                    print(f'failed {err}')
+                    print("trying nuccore database")
+                    try:
+                        net_handle = Entrez.efetch(db="nuccore", id=accession, rettype="fasta", retmode="text")
+                    except:
+                        print(f'failed {err}')
+                        return None
+
+            with gzip.open(local_path, "wt") as f:
+                f.write(net_handle.read())
+            net_handle.close()
+        return local_path
+
+    def import_fasta(self, fasta_path: Path, h5, show_bar: bool = True, accessions=None, use_gzip=True):
+        accessions = accessions or self.get_accessions()
+        seq_count = 0
+        with open_fasta(fasta_path, use_gzip) as fasta:
+            for line in fasta:
+                if line.startswith(">"):
+                    seq_count += 1
+
+        is_mitochondria = self.name.lower().startswith("mitochondr")
+        is_plastid = self.name.lower().startswith("plastid")
+
+        with open_fasta(fasta_path, use_gzip) as fasta:
+            result = []
+            if show_bar:
+                bar = progressbar.ProgressBar(max_value=seq_count - 1)
+            seqs = SeqIO.parse(fasta, "fasta")
+            for i, seq in enumerate(seqs):
+                dataset_key = self.dataset_key(seq.name)
+                description = seq.description.lower()
+
+                if not is_mitochondria and "mitochondr" in description:
+                    continue
+
+                if not is_plastid and (
+                    "plastid" in description
+                    or "chloroplast" in description
+                    or "apicoplast" in description
+                    or "kinetoplast" in description
+                ):
+                    continue
+
+                if not is_plastid and not is_mitochondria and "organelle" in description:
+                    continue
+
+                # Check if we already have this dataset. If not then add.
+                if not seq.name in accessions:
+                    dset = h5.create_dataset(
+                        dataset_key,
+                        data=tensor.dna_seq_to_numpy(seq),
+                        dtype="u1",
+                        compression="gzip",
+                        compression_opts=9,
+                    )
+                    accessions.add(seq.name)
+
+                result.append(dict(category=self.name, accession=seq.name))
+                if i % 20 == 0:
+                    if show_bar:
+                        bar.update(i)
+            if show_bar:
+                bar.update(i)
+
+        return result

@@ -6,6 +6,7 @@ import gzip
 import pandas as pd
 from pathlib import Path
 import numpy as np
+from rich.progress import track
 
 from Bio import SeqIO
 
@@ -22,6 +23,21 @@ from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
 from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA
 from .refseq import RefSeqCategory
+
+
+def fasta_open(fasta_path):
+    if fasta_path.suffix == ".gz":
+        return gzip.open(fasta_path, "rt")
+    return open(fasta_path, "rt")
+
+
+def fasta_seq_count(fasta_path):
+    seq_count = 0
+    with fasta_open(fasta_path) as fasta:
+        for line in fasta:
+            if line.startswith(">"):
+                seq_count += 1
+    return seq_count
 
 
 @delegates()
@@ -200,11 +216,14 @@ def fasta_to_dataframe(
     if not fasta_path.exists():
         raise FileNotFoundError(f"Cannot find fasta file {fasta_path}.")
 
+    seq_count = fasta_seq_count(fasta_path)
+    print("{seq_count} sequences")
+    if max_seqs and seq_count >= max_seqs:
+        print("Limiting to maximum number of sequences: {max_seqs}")
+        seq_count = max_seqs
+
     data = []
-    if fasta_path.suffix == ".gz":
-        fasta = gzip.open(fasta_path, "rt")
-    else:
-        fasta = open(fasta_path, "rt")
+    fasta = fasta_open(fasta_path)
 
     if validation_from_filename:
         if "valid" in str(fasta_path):
@@ -215,7 +234,7 @@ def fasta_to_dataframe(
             validation_from_filename = False
 
     seqs = SeqIO.parse(fasta, "fasta")
-    for seq_index, seq in enumerate(seqs):
+    for seq_index, seq in enumerate(track(seqs, total=seq_count, description=f"Reading fasta file:")):
         if max_seqs and seq_index >= max_seqs:
             break
 
