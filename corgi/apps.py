@@ -37,7 +37,9 @@ class Corgi(fa.FastApp):
         csv: Path = fa.Param(help="The CSV which has the sequences to use."),
         base_dir: Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
         batch_size: int = fa.Param(default=32, help="The batch size."),
-        # dataloader_type: DataloaderType = fa.Param(default=DataloaderType.PLAIN),
+        dataloader_type: dataloaders.DataloaderType = fa.Param(
+            default=dataloaders.DataloaderType.PLAIN, case_sensitive=False
+        ),
     ) -> DataLoaders:
         """
         Creates a FastAI DataLoaders object which Corgi uses in training and prediction.
@@ -50,7 +52,9 @@ class Corgi(fa.FastApp):
             raise Exception("No CSV given")
         if base_dir is None:
             raise Exception("No base_dir given")
-        dls = dataloaders.create_dataloaders_refseq_path(csv, base_dir=base_dir, batch_size=batch_size)
+        dls = dataloaders.create_dataloaders_refseq_path(
+            csv, base_dir=base_dir, batch_size=batch_size, dataloader_type=dataloader_type
+        )
         self.categories = dls.vocab
         return dls
 

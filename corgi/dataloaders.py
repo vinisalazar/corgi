@@ -127,10 +127,10 @@ def create_datablock(seq_length=None, validation_column="validation", validation
     )
 
 
-class DataloaderType(Enum):
-    PLAIN = 0
-    WEIGHTED = 1
-    STRATIFIED = 2
+class DataloaderType(str, Enum):
+    PLAIN = "PLAIN"
+    WEIGHTED = "WEIGHTED"
+    STRATIFIED = "STRATIFIED"
 
 
 def create_dataloaders_refseq_path(dataframe_path: Path, base_dir: Path, batch_size=64, **kwargs):
@@ -160,23 +160,32 @@ def create_dataloaders_refseq(
     dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
 
     validation_column = "validation"
+    random.seed(42)
     if validation_column not in df:
-        validation_column = None
+        df[validation_column] = 0
+        value_counts = df.category.value_counts()
+        validation_per_category = int(0.2 * value_counts.min())
+
+        for name in df.category.unique():
+            indexes_for_category = df.index[df.category == name]
+            validation_indexes = random.sample(list(indexes_for_category.values), validation_per_category)
+            df.loc[validation_indexes, validation_column] = 1
 
     print("Creating Datablock")
     vocab = df['category'].unique()
     datablock = create_datablock_refseq(categories, validation_column=validation_column, vocab=vocab, **kwargs)
 
+    dataloader_type = str(dataloader_type).upper()
     if validation_column in df:
         training_df = df[df[validation_column] == 0].reset_index()
 
-        if dataloader_type == DataloaderType.STRATIFIED:
+        if dataloader_type == "STRATIFIED":
             print("Creating groups for balancing dataset")
             groups = [training_df.index[training_df['category'] == name] for name in vocab]
 
             dataloaders_kwargs['dl_type'] = StratifiedDL
             dataloaders_kwargs['dl_kwargs'] = [dict(groups=groups), dict()]
-        elif dataloader_type == DataloaderType.WEIGHTED:
+        elif dataloader_type == "WEIGHTED":
             print("Creating weights for balancing dataset")
             weights = np.zeros((len(training_df),))
             value_counts = training_df['category'].value_counts()
@@ -187,6 +196,10 @@ def create_dataloaders_refseq(
 
             dataloaders_kwargs['dl_type'] = WeightedDL
             dataloaders_kwargs['dl_kwargs'] = [dict(wgts=weights), dict()]
+        elif dataloader_type == "PLAIN":
+            pass
+        else:
+            raise Exception(f"dataloader type {dataloader_type} not understood")
 
     print("Creating Dataloaders")
     return datablock.dataloaders(df, verbose=verbose, **dataloaders_kwargs)
@@ -217,7 +230,7 @@ def fasta_to_dataframe(
         raise FileNotFoundError(f"Cannot find fasta file {fasta_path}.")
 
     seq_count = fasta_seq_count(fasta_path)
-    print("{seq_count} sequences")
+    print(f"{seq_count} sequences")
     if max_seqs and seq_count >= max_seqs:
         print("Limiting to maximum number of sequences: {max_seqs}")
         seq_count = max_seqs

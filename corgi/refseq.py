@@ -370,9 +370,10 @@ class RefSeqCategory:
 
                 # Check if we already have this dataset. If not then add.
                 if not seq.name in accessions:
+                    t = tensor.dna_seq_to_numpy(seq.seq)
                     dset = h5.create_dataset(
                         dataset_key,
-                        data=tensor.dna_seq_to_numpy(seq),
+                        data=t,
                         dtype="u1",
                         compression="gzip",
                         compression_opts=9,

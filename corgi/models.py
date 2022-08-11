@@ -90,7 +90,6 @@ class ConvRecurrantClassifier(nn.Module):
 
         self.num_classes = num_classes
         self.num_embeddings = num_embeddings
-        self.dropout = dropout
 
         ########################
         ## Embedding
@@ -174,7 +173,6 @@ class ConvRecurrantClassifier(nn.Module):
         ########################
         # Cast as pytorch tensor
         # x = Tensor(x)
-        # breakpoint()
 
         # Convert to int because it may be simply a byte
         x = x.int()
