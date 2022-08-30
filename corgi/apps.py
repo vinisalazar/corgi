@@ -74,6 +74,10 @@ class Corgi(fa.FastApp):
             default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
         ),
         dropout: float = fa.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
+        final_bias: bool = fa.Param(default=True, help="Whether or not to use bias in the final layer."),
+        cnn_only: bool = False,
+        kernel_size: int = fa.Param(default=3, help="The size of the kernels for CNN only classifier."),
+        cnn_dims_start: int = 64,
     ) -> nn.Module:
         """
         Creates a deep learning model for the Corgi to use.
@@ -82,6 +86,20 @@ class Corgi(fa.FastApp):
             nn.Module: The created model.
         """
         num_classes = len(self.categories)
+
+        if cnn_only:
+            return models.ConvClassifier(
+                num_embeddings=5,  # i.e. the size of the vocab which is N, A, C, G, T
+                kernel_size=kernel_size,
+                factor=2,
+                cnn_layers=cnn_layers,
+                num_classes=num_classes,
+                kernel_size_maxpool=kernel_size_maxpool,
+                final_bias=final_bias,
+                dropout=dropout,
+                cnn_dims_start=cnn_dims_start,
+            )
+
         return models.ConvRecurrantClassifier(
             num_classes=num_classes,
             embedding_dim=embedding_dim,
@@ -91,6 +109,7 @@ class Corgi(fa.FastApp):
             final_layer_dims=final_layer_dims,
             dropout=dropout,
             kernel_size_maxpool=kernel_size_maxpool,
+            final_bias=final_bias,
         )
 
     def metrics(self):

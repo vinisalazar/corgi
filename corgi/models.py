@@ -83,6 +83,7 @@ class ConvRecurrantClassifier(nn.Module):
         kernel_size_maxpool: int = 2,
         residual_blocks: bool = False,
         final_bias: bool = True,
+        multi_kernel_sizes: bool = True,
     ):
         super().__init__()
 
@@ -105,36 +106,38 @@ class ConvRecurrantClassifier(nn.Module):
         ## Convolutional Layer
         ########################
 
-        kernel_size = 5
-        convolutions = []
-        for _ in range(cnn_layers):
-            convolutions.append(
-                nn.Conv1d(in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size, padding='same')
-            )
-            kernel_size += 2
+        self.multi_kernel_sizes = multi_kernel_sizes
+        if multi_kernel_sizes:
+            kernel_size = 5
+            convolutions = []
+            for _ in range(cnn_layers):
+                convolutions.append(
+                    nn.Conv1d(in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size, padding='same')
+                )
+                kernel_size += 2
 
-        self.convolutions = nn.ModuleList(convolutions)
-        self.pool = nn.MaxPool1d(kernel_size=kernel_size_maxpool)
-        current_dims = filters * cnn_layers
-
-        # self.filters = filters
-        # self.residual_blocks = residual_blocks
-        # self.intermediate_filters = 128
-        # if residual_blocks:
-        #     self.cnn_layers = nn.Sequential(
-        #         ResidualBlock1D(embedding_dim, embedding_dim),
-        #         ResidualBlock1D(embedding_dim, self.intermediate_filters, 2),
-        #         ResidualBlock1D(self.intermediate_filters, self.intermediate_filters),
-        #         ResidualBlock1D(self.intermediate_filters, filters, 2),
-        #         ResidualBlock1D(filters, filters),
-        #     )
-        # else:
-        #     self.kernel_size_cnn = kernel_size_cnn
-        #     self.cnn_layers = nn.Sequential(
-        #         nn.Conv1d( in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn),
-        #         nn.MaxPool1d(kernel_size=kernel_size_maxpool),
-        #     )
-        # current_dims = filters
+            self.convolutions = nn.ModuleList(convolutions)
+            self.pool = nn.MaxPool1d(kernel_size=kernel_size_maxpool)
+            current_dims = filters * cnn_layers
+        else:
+            self.filters = filters
+            self.residual_blocks = residual_blocks
+            self.intermediate_filters = 128
+            if residual_blocks:
+                self.cnn_layers = nn.Sequential(
+                    ResidualBlock1D(embedding_dim, embedding_dim),
+                    ResidualBlock1D(embedding_dim, self.intermediate_filters, 2),
+                    ResidualBlock1D(self.intermediate_filters, self.intermediate_filters),
+                    ResidualBlock1D(self.intermediate_filters, filters, 2),
+                    ResidualBlock1D(filters, filters),
+                )
+            else:
+                self.kernel_size_cnn = kernel_size_cnn
+                self.cnn_layers = nn.Sequential(
+                    nn.Conv1d(in_channels=embedding_dim, out_channels=filters, kernel_size=kernel_size_cnn),
+                    nn.MaxPool1d(kernel_size=kernel_size_maxpool),
+                )
+            current_dims = filters
 
         ########################
         ## Recurrent Layer
@@ -147,6 +150,7 @@ class ConvRecurrantClassifier(nn.Module):
                 bidirectional=True,
                 bias=True,
                 batch_first=True,
+                dropout=dropout,
             )
             current_dims = lstm_dims * 2
 
@@ -184,12 +188,14 @@ class ConvRecurrantClassifier(nn.Module):
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
         x = x.transpose(1, 2)
 
-        conv_results = [conv(x) for conv in self.convolutions]
-        x = torch.cat(conv_results, dim=-2)
+        if self.multi_kernel_sizes:
+            conv_results = [conv(x) for conv in self.convolutions]
+            x = torch.cat(conv_results, dim=-2)
 
-        x = self.pool(x)
+            x = self.pool(x)
+        else:
+            x = self.cnn_layers(x)
 
-        # x = self.cnn_layers(x)
         # Current shape: batch, filters, seq_len
         # With batch_first=True, LSTM expects shape: batch, seq, feature
         x = x.transpose(2, 1)
@@ -220,3 +226,103 @@ class ConvRecurrantClassifier(nn.Module):
         out = self.logits(x)
 
         return out
+
+
+class ConvClassifier(nn.Module):
+    def __init__(
+        self,
+        embedding_dim=8,
+        cnn_layers=6,
+        num_classes=5,
+        cnn_dims_start=64,
+        kernel_size_maxpool=2,
+        num_embeddings=5,  # i.e. the size of the vocab which is N, A, C, G, T
+        kernel_size=3,
+        factor=2,
+        padding="same",
+        padding_mode="zeros",
+        dropout=0.5,
+        final_bias=True,
+        lstm_dims: int = 0,
+    ):
+        super().__init__()
+
+        self.embedding_dim = embedding_dim
+        self.cnn_layers = cnn_layers
+        self.num_classes = num_classes
+        self.kernel_size_maxpool = kernel_size_maxpool
+
+        self.num_embeddings = num_embeddings
+        self.kernel_size = kernel_size
+        self.factor = factor
+        self.dropout = dropout
+
+        self.embedding = nn.Embedding(
+            num_embeddings=num_embeddings,
+            embedding_dim=embedding_dim,
+        )
+
+        in_channels = embedding_dim
+        out_channels = cnn_dims_start
+        conv_layers = []
+        for layer_index in range(cnn_layers):
+            conv_layers += [
+                nn.Conv1d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    padding=padding,
+                    padding_mode=padding_mode,
+                ),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.MaxPool1d(kernel_size_maxpool),
+            ]
+            in_channels = out_channels
+            out_channels = int(out_channels * factor)
+
+        self.conv = nn.Sequential(*conv_layers)
+
+        self.lstm_dims = lstm_dims
+        if lstm_dims:
+            self.bi_lstm = nn.LSTM(
+                input_size=in_channels,  # Is this dimension? - this should receive output from maxpool
+                hidden_size=lstm_dims,
+                bidirectional=True,
+                bias=True,
+                batch_first=True,
+                dropout=dropout,
+            )
+            current_dims = lstm_dims * 2
+        else:
+            current_dims = in_channels
+
+        self.final = nn.Sequential(
+            nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
+            nn.ReLU(),
+            nn.Linear(in_features=current_dims, out_features=num_classes, bias=final_bias),
+        )
+
+    def forward(self, x):
+        # Convert to int because it may be simply a byte
+        x = x.int()
+        x = self.embedding(x)
+
+        # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
+        x = x.transpose(1, 2)
+        x = self.conv(x)
+
+        if self.lstm_dims:
+            x = x.transpose(2, 1)
+            output, (h_n, c_n) = self.bi_lstm(x)
+            # h_n of shape (num_layers * num_directions, batch, hidden_size)
+            # We are using a single layer with 2 directions so the two output vectors are
+            # [0,:,:] and [1,:,:]
+            # [0,:,:] -> considers the first index from the first dimension
+            x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
+        else:
+            x = torch.mean(x, axis=-1)
+
+        predictions = self.final(x)
+
+        return predictions
