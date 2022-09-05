@@ -7,7 +7,11 @@ output:
     Usage: base-callback show-batch [OPTIONS]
 
     Options:
-      --csv PATH            The CSV which has the sequences to use.
-      --base-dir PATH       The base directory with the RefSeq HDF5 files.
-      --batch-size INTEGER  The batch size.  [default: 32]
-      --help                Show this message and exit.
+      --output-path PATH              A location to save the HTML which summarizes
+                                      the batch.
+      --csv PATH                      The CSV which has the sequences to use.
+      --base-dir PATH                 The base directory with the RefSeq HDF5 files.
+      --batch-size INTEGER            The batch size.  [default: 32]
+      --dataloader-type [PLAIN|WEIGHTED|STRATIFIED]
+                                      [default: DataloaderType.PLAIN]
+      --help                          Show this message and exit.
