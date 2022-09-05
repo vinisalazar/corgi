@@ -4,10 +4,10 @@ from torch import nn
 import torch
 import pandas as pd
 from fastai.data.core import DataLoaders
-from fastapp.util import copy_func, call_func, change_typer_to_defaults, add_kwargs
+from torchapp.util import copy_func, call_func, change_typer_to_defaults, add_kwargs
 from fastai.learner import Learner, load_learner
 from fastai.metrics import accuracy, Precision, Recall, RocAuc, F1Score
-import fastapp as fa
+import torchapp as ta
 from rich.console import Console
 from rich.table import Table
 from rich.box import SIMPLE
@@ -19,7 +19,7 @@ console = Console()
 from . import dataloaders, models, refseq, transforms
 
 
-class Corgi(fa.FastApp):
+class Corgi(ta.TorchApp):
     """
     corgi - Classifier for ORganelle Genomes Inter alia
     """
@@ -34,10 +34,10 @@ class Corgi(fa.FastApp):
 
     def dataloaders(
         self,
-        csv: Path = fa.Param(help="The CSV which has the sequences to use."),
-        base_dir: Path = fa.Param(help="The base directory with the RefSeq HDF5 files."),
-        batch_size: int = fa.Param(default=32, help="The batch size."),
-        dataloader_type: dataloaders.DataloaderType = fa.Param(
+        csv: Path = ta.Param(help="The CSV which has the sequences to use."),
+        base_dir: Path = ta.Param(help="The base directory with the RefSeq HDF5 files."),
+        batch_size: int = ta.Param(default=32, help="The batch size."),
+        dataloader_type: dataloaders.DataloaderType = ta.Param(
             default=dataloaders.DataloaderType.PLAIN, case_sensitive=False
         ),
     ) -> DataLoaders:
@@ -60,23 +60,23 @@ class Corgi(fa.FastApp):
 
     def model(
         self,
-        embedding_dim: int = fa.Param(
+        embedding_dim: int = ta.Param(
             default=8, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."
         ),
-        filters: int = fa.Param(
+        filters: int = ta.Param(
             default=256,
             help="The number of filters in each of the 1D convolution layers. These are concatenated together",
         ),
-        cnn_layers: int = fa.Param(default=6, help="The number of 1D convolution layers."),
-        kernel_size_maxpool: int = fa.Param(default=2, help="The size of the pooling before going to the LSTM."),
-        lstm_dims: int = fa.Param(default=256, help="The size of the hidden layers in the LSTM in both directions."),
-        final_layer_dims: int = fa.Param(
+        cnn_layers: int = ta.Param(default=6, help="The number of 1D convolution layers."),
+        kernel_size_maxpool: int = ta.Param(default=2, help="The size of the pooling before going to the LSTM."),
+        lstm_dims: int = ta.Param(default=256, help="The size of the hidden layers in the LSTM in both directions."),
+        final_layer_dims: int = ta.Param(
             default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
         ),
-        dropout: float = fa.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
-        final_bias: bool = fa.Param(default=True, help="Whether or not to use bias in the final layer."),
+        dropout: float = ta.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
+        final_bias: bool = ta.Param(default=True, help="Whether or not to use bias in the final layer."),
         cnn_only: bool = False,
-        kernel_size: int = fa.Param(default=3, help="The size of the kernels for CNN only classifier."),
+        kernel_size: int = ta.Param(default=3, help="The size of the kernels for CNN only classifier."),
         cnn_dims_start: int = 64,
     ) -> nn.Module:
         """
@@ -125,13 +125,13 @@ class Corgi(fa.FastApp):
     def monitor(self):
         return "f1_score"
 
-    # def loss_func(self, label_smoothing:float=fa.Param(0.1, help="The amount of label smoothing.")):
+    # def loss_func(self, label_smoothing:float=ta.Param(0.1, help="The amount of label smoothing.")):
     #     return CrossEntropyLossFlat(label_smoothing=label_smoothing)
 
     def inference_dataloader(
         self,
         learner,
-        fasta: List[Path] = fa.Param(None, help="A fasta file with sequences to be classified."),
+        fasta: List[Path] = ta.Param(None, help="A fasta file with sequences to be classified."),
         max_seqs: int = None,
         **kwargs,
     ):
@@ -145,7 +145,7 @@ class Corgi(fa.FastApp):
     def output_results(
         self,
         results,
-        output_csv: Path = fa.Param(default=None, help="A path to output the results as a CSV."),
+        output_csv: Path = ta.Param(default=None, help="A path to output the results as a CSV."),
         **kwargs,
     ):
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)

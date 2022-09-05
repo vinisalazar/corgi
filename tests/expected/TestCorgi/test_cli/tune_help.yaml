@@ -34,6 +34,9 @@ output:
                                       fp16]
       --output-dir PATH               The location of the output directory.
                                       [default: ./outputs]
+      --weight-decay FLOAT            The amount of weight decay. If None then it
+                                      uses the default amount of weight decay in
+                                      fastai.
       --csv PATH                      The CSV which has the sequences to use.
       --base-dir PATH                 The base directory with the RefSeq HDF5 files.
       --batch-size INTEGER            The batch size.  [default: 32]
@@ -73,6 +76,8 @@ output:
                                       purposes.
       --run-name TEXT                 The name for this particular run for logging
                                       purposes.
+      --run-id TEXT                   A unique ID for this particular run for
+                                      logging purposes.
       --notes TEXT                    A longer description of the run for logging
                                       purposes.
       --tag TEXT                      A tag for logging purposes. Multiple tags can
