@@ -60,7 +60,6 @@ For more information about the other options, see the help with:
 
     corgi --help
 
-Or see the documentation with explanations about `advanced usage <https://rbturnbull.github.io/corgi/advanced.html>`_.
 
 .. end-quickstart
 
