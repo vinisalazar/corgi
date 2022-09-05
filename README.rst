@@ -1,6 +1,4 @@
-================================================================
-corgi
-================================================================
+.. image:: https://raw.githubusercontent.com/rbturnbull/corgi/main/docs/images/corgi-banner.svg
 
 .. start-badges
 
@@ -26,7 +24,46 @@ corgi
         
 .. end-badges
 
-Classifier for ORganelle Genomes Inter alia
+.. start-quickstart
+
+Installation
+============
+
+The software can be installed using ``pip``
+
+.. code-block:: bash
+
+    pip install git+https://github.com/rbturnbull/corgi.git
+
+.. note ::
+
+    Soon corgi will be able to be installed using PyPI.
+
+
+Usage
+============
+
+To make predictions, run the ``corgi`` command line tool:
+
+.. code-block:: bash
+
+    corgi infer --pretrained <model pickle file> --fasta <input fasta file> --output-csv <results>
+
+.. note ::
+
+    Soon models will be able to be automatically downloaded by corgi.
+
+
+For more information about the other options, see the help with:
+
+.. code-block:: bash
+
+    corgi --help
+
+Or see the documentation with explanations about `advanced usage <https://rbturnbull.github.io/corgi/advanced.html>`_.
+
+.. end-quickstart
+
 
 Credits
 ==================================
