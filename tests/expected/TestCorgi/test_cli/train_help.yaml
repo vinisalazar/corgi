@@ -41,10 +41,14 @@ output:
                                       enabled)  [default: 0.5]
       --final-bias / --no-final-bias  Whether or not to use bias in the final layer.
                                       [default: final-bias]
-      --cnn-only / --no-cnn-only      [default: no-cnn-only]
+      --cnn-only / --no-cnn-only      [default: cnn-only]
       --kernel-size INTEGER           The size of the kernels for CNN only
                                       classifier.  [default: 3]
-      --cnn-dims-start INTEGER        [default: 64]
+      --cnn-dims-start INTEGER        The size of the number of filters in the first
+                                      CNN layer.  [default: 64]
+      --factor FLOAT                  The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
+                                      [default: 2.0]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by

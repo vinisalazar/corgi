@@ -43,12 +43,11 @@ output:
       --dataloader-type [PLAIN|WEIGHTED|STRATIFIED]
                                       [default: DataloaderType.PLAIN]
       --embedding-dim INTEGER         The size of the embeddings for the nucleotides
-                                      (N, A, G, C, T).  [default: 8]
+                                      (N, A, G, C, T).
       --filters INTEGER               The number of filters in each of the 1D
                                       convolution layers. These are concatenated
                                       together  [default: 256]
       --cnn-layers INTEGER            The number of 1D convolution layers.
-                                      [default: 6]
       --kernel-size-maxpool INTEGER   The size of the pooling before going to the
                                       LSTM.  [default: 2]
       --lstm-dims INTEGER             The size of the hidden layers in the LSTM in
@@ -57,13 +56,15 @@ output:
                                       this is zero then this layer isn't used.
                                       [default: 0]
       --dropout FLOAT                 The amount of dropout to use. (not currently
-                                      enabled)  [default: 0.5]
+                                      enabled)
       --final-bias / --no-final-bias  Whether or not to use bias in the final layer.
-                                      [default: final-bias]
-      --cnn-only / --no-cnn-only      [default: no-cnn-only]
+      --cnn-only / --no-cnn-only      [default: cnn-only]
       --kernel-size INTEGER           The size of the kernels for CNN only
-                                      classifier.  [default: 3]
-      --cnn-dims-start INTEGER        [default: 64]
+                                      classifier.
+      --cnn-dims-start INTEGER        The size of the number of filters in the first
+                                      CNN layer.
+      --factor FLOAT                  The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by
