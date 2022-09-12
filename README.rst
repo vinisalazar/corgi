@@ -57,18 +57,19 @@ To make predictions, run the ``corgi`` command line tool:
 
 .. code-block:: bash
 
-    corgi infer --pretrained <model pickle file> --fasta <input fasta file> --output-csv <results>
-
-.. note ::
-
-    Soon models will be able to be automatically downloaded by corgi.
-
+    corgi --fasta <input fasta file> --output-csv <results>
 
 For more information about the other options, see the help with:
 
 .. code-block:: bash
 
     corgi --help
+
+For help on training a model with corgi, run:
+
+.. code-block:: bash
+
+    corgi-train --help
 
 
 .. end-quickstart
