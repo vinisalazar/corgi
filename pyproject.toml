@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "corgi"
-version = "0.2.0"
+name = "bio-corgi"
+version = "0.2.1"
 description = "Classifier for ORganelle Genomes"
 authors = ["Robert Turnbull <robert.turnbull@unimelb.edu.au>"]
 license = "Apache Software License 2.0"
