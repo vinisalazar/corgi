@@ -35,7 +35,7 @@ optuna = "^2.10.0"
 cryptography = "^36.0.1"
 PyMySQL = "^1.0.2"
 termgraph = "^0.5.3"
-torchapp = "^0.2.2"
+torchapp = {git = "https://github.com/rbturnbull/torchapp.git"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -68,5 +68,5 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-corgi = "corgi.apps:Corgi.inference_only_main"
 corgi-train = "corgi.apps:Corgi.main"
+corgi = "corgi.apps:Corgi.inference_only_main"
