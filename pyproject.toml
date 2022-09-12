@@ -1,11 +1,22 @@
 [tool.poetry]
 name = "bio-corgi"
 version = "0.2.1"
-description = "Classifier for ORganelle Genomes"
+description = "Classifier for ORganelle Genomes Inter alia"
 authors = ["Robert Turnbull <robert.turnbull@unimelb.edu.au>"]
 license = "Apache Software License 2.0"
 readme = "README.rst"
-
+repository = "https://github.com/rbturnbull/corgi"
+documentation = "https://rbturnbull.github.io/corgi/"
+homepage = "https://github.com/rbturnbull/corgi"
+keywords = ["metagenomic classifier", "tiara", "DNA", "bioinformatics", "fastai", "pytorch", "deep learning", "command-line interface"]
+# For classifiers see https://pypi.org/classifiers/
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 biopython = "^1.79"
@@ -24,8 +35,7 @@ optuna = "^2.10.0"
 cryptography = "^36.0.1"
 PyMySQL = "^1.0.2"
 termgraph = "^0.5.3"
-torchapp = "^0.1.29"
-pre-commit = "^2.20.0"
+torchapp = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -41,6 +51,7 @@ pre-commit = "^2.15.0"
 sphinx-copybutton = "^0.4.0"
 black = "^21.10b0"
 sphinx-click = {git = "https://github.com/rbturnbull/sphinx-click.git"}
+pre-commit = "^2.20.0"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
