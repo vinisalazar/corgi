@@ -38,7 +38,7 @@ optuna = "^2.10.0"
 cryptography = "^36.0.1"
 PyMySQL = "^1.0.2"
 termgraph = "^0.5.3"
-torchapp = {git = "https://github.com/rbturnbull/torchapp.git"}
+torchapp = "^0.2.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
