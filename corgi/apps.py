@@ -61,23 +61,64 @@ class Corgi(ta.TorchApp):
     def model(
         self,
         embedding_dim: int = ta.Param(
-            default=8, help="The size of the embeddings for the nucleotides (N, A, G, C, T)."
+            default=8,
+            help="The size of the embeddings for the nucleotides (N, A, G, C, T).",
+            tune=True,
+            tune_min=4,
+            tune_max=32,
+            log=True,
         ),
         filters: int = ta.Param(
             default=256,
             help="The number of filters in each of the 1D convolution layers. These are concatenated together",
         ),
-        cnn_layers: int = ta.Param(default=6, help="The number of 1D convolution layers."),
-        kernel_size_maxpool: int = ta.Param(default=2, help="The size of the pooling before going to the LSTM."),
+        cnn_layers: int = ta.Param(
+            default=6,
+            help="The number of 1D convolution layers.",
+            tune=True,
+            tune_min=2,
+            tune_max=6,
+        ),
+        kernel_size_maxpool: int = ta.Param(
+            default=2,
+            help="The size of the pooling before going to the LSTM.",
+        ),
         lstm_dims: int = ta.Param(default=256, help="The size of the hidden layers in the LSTM in both directions."),
         final_layer_dims: int = ta.Param(
             default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
         ),
-        dropout: float = ta.Param(default=0.5, help="The amount of dropout to use. (not currently enabled)"),
-        final_bias: bool = ta.Param(default=True, help="Whether or not to use bias in the final layer."),
-        cnn_only: bool = False,
-        kernel_size: int = ta.Param(default=3, help="The size of the kernels for CNN only classifier."),
-        cnn_dims_start: int = 64,
+        dropout: float = ta.Param(
+            default=0.5,
+            help="The amount of dropout to use. (not currently enabled)",
+            tune=True,
+            tune_min=0.0,
+            tune_max=1.0,
+        ),
+        final_bias: bool = ta.Param(
+            default=True,
+            help="Whether or not to use bias in the final layer.",
+            tune=True,
+        ),
+        cnn_only: bool = True,
+        kernel_size: int = ta.Param(
+            default=3, help="The size of the kernels for CNN only classifier.", tune=True, tune_choices=[3, 5, 7, 9]
+        ),
+        cnn_dims_start: int = ta.Param(
+            default=64,
+            help="The size of the number of filters in the first CNN layer.",
+            tune=True,
+            log=True,
+            tune_min=32,
+            tune_max=1024,
+        ),
+        factor: float = ta.Param(
+            default=2.0,
+            help="The factor to multiply the number of filters in the CNN layers each time it is downscaled.",
+            tune=True,
+            log=True,
+            tune_min=0.5,
+            tune_max=4.0,
+        ),
     ) -> nn.Module:
         """
         Creates a deep learning model for the Corgi to use.
@@ -91,7 +132,7 @@ class Corgi(ta.TorchApp):
             return models.ConvClassifier(
                 num_embeddings=5,  # i.e. the size of the vocab which is N, A, C, G, T
                 kernel_size=kernel_size,
-                factor=2,
+                factor=factor,
                 cnn_layers=cnn_layers,
                 num_classes=num_classes,
                 kernel_size_maxpool=kernel_size_maxpool,

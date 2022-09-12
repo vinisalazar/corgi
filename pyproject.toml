@@ -9,7 +9,6 @@ repository = "https://github.com/rbturnbull/corgi"
 documentation = "https://rbturnbull.github.io/corgi/"
 homepage = "https://github.com/rbturnbull/corgi"
 keywords = ["metagenomic classifier", "tiara", "DNA", "bioinformatics", "fastai", "pytorch", "deep learning", "command-line interface"]
-# For classifiers see https://pypi.org/classifiers/
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Intended Audience :: Science/Research",
@@ -17,6 +16,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
+
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 biopython = "^1.79"
@@ -47,11 +47,11 @@ nbsphinx = "^0.8.7"
 sphinx-rtd-theme = "^1.0.0"
 sphinx-autobuild = "^2021.3.14"
 myst-parser = "^0.15.2"
-pre-commit = "^2.15.0"
+pre-commit = "^2.20.0"
 sphinx-copybutton = "^0.4.0"
 black = "^21.10b0"
 sphinx-click = {git = "https://github.com/rbturnbull/sphinx-click.git"}
-pre-commit = "^2.20.0"
+
 
 [tool.pytest.ini_options]
 minversion = "6.0"
