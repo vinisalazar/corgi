@@ -250,3 +250,6 @@ class Corgi(ta.TorchApp):
         dataloaders = call_func(self.dataloaders, **kwargs)
         self.category_counts_dataloader(dataloaders.train, "Training")
         self.category_counts_dataloader(dataloaders.valid, "Validation")
+
+    def pretrained_location(self) -> str:
+        return "https://github.com/rbturnbull/corgi/releases/download/v0.2.2-alpha/corgi-learner-0.2.2.pkl"
