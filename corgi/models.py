@@ -330,10 +330,11 @@ class ConvClassifier(nn.Module):
             # [0,:,:] and [1,:,:]
             # [0,:,:] -> considers the first index from the first dimension
             x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
-        else:
+        elif hasattr(x, 'average_pool'):
             x = self.average_pool(x)
             x = torch.flatten(x, 1)
-            # x = torch.mean(x, axis=-1)
+        else:
+            x = torch.mean(x, axis=-1)
 
         predictions = self.final(x)
 
