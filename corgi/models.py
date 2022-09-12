@@ -277,6 +277,12 @@ class ConvClassifier(nn.Module):
                 nn.ReLU(),
                 nn.Dropout(dropout),
                 nn.MaxPool1d(kernel_size_maxpool),
+                # nn.Conv1d(
+                #     in_channels=out_channels,
+                #     out_channels=out_channels,
+                #     kernel_size=kernel_size,
+                #     stride=kernel_size_maxpool,
+                # ),
             ]
             in_channels = out_channels
             out_channels = int(out_channels * factor)
@@ -297,7 +303,11 @@ class ConvClassifier(nn.Module):
         else:
             current_dims = in_channels
 
+        self.average_pool = nn.AdaptiveAvgPool1d(1)
+
         self.final = nn.Sequential(
+            # nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
+            # nn.ReLU(),
             nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
             nn.ReLU(),
             nn.Linear(in_features=current_dims, out_features=num_classes, bias=final_bias),
@@ -321,7 +331,9 @@ class ConvClassifier(nn.Module):
             # [0,:,:] -> considers the first index from the first dimension
             x = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=-1)
         else:
-            x = torch.mean(x, axis=-1)
+            x = self.average_pool(x)
+            x = torch.flatten(x, 1)
+            # x = torch.mean(x, axis=-1)
 
         predictions = self.final(x)
 

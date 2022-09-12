@@ -1,7 +1,7 @@
-from fastapp.testing import FastAppTestCase
+from torchapp.testing import TorchAppTestCase
 from corgi.apps import Corgi
 
 
-class TestCorgi(FastAppTestCase):
+class TestCorgi(TorchAppTestCase):
     app_class = Corgi
 

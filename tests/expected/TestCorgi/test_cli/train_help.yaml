@@ -15,6 +15,9 @@ output:
                                       fp16]
       --output-dir PATH               The location of the output directory.
                                       [default: ./outputs]
+      --weight-decay FLOAT            The amount of weight decay. If None then it
+                                      uses the default amount of weight decay in
+                                      fastai.
       --csv PATH                      The CSV which has the sequences to use.
       --base-dir PATH                 The base directory with the RefSeq HDF5 files.
       --batch-size INTEGER            The batch size.  [default: 32]
@@ -38,10 +41,14 @@ output:
                                       enabled)  [default: 0.5]
       --final-bias / --no-final-bias  Whether or not to use bias in the final layer.
                                       [default: final-bias]
-      --cnn-only / --no-cnn-only      [default: no-cnn-only]
+      --cnn-only / --no-cnn-only      [default: cnn-only]
       --kernel-size INTEGER           The size of the kernels for CNN only
                                       classifier.  [default: 3]
-      --cnn-dims-start INTEGER        [default: 64]
+      --cnn-dims-start INTEGER        The size of the number of filters in the first
+                                      CNN layer.  [default: 64]
+      --factor FLOAT                  The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
+                                      [default: 2.0]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by
@@ -54,6 +61,8 @@ output:
                                       purposes.
       --run-name TEXT                 The name for this particular run for logging
                                       purposes.
+      --run-id TEXT                   A unique ID for this particular run for
+                                      logging purposes.
       --notes TEXT                    A longer description of the run for logging
                                       purposes.
       --tag TEXT                      A tag for logging purposes. Multiple tags can

@@ -2,7 +2,7 @@
 
 .. start-badges
 
-|testing badge| |coverage badge| |docs badge| |black badge| |git3moji badge| |fastapp badge|
+|testing badge| |coverage badge| |docs badge| |black badge| |git3moji badge| |torchapp badge|
 
 .. |testing badge| image:: https://github.com/rbturnbull/corgi/actions/workflows/testing.yml/badge.svg
     :target: https://github.com/rbturnbull/corgi/actions
@@ -19,8 +19,8 @@
 .. |git3moji badge| image:: https://img.shields.io/badge/git3moji-%E2%9A%A1%EF%B8%8F%F0%9F%90%9B%F0%9F%93%BA%F0%9F%91%AE%F0%9F%94%A4-fffad8.svg
     :target: https://robinpokorny.github.io/git3moji/
 
-.. |fastapp badge| image:: https://img.shields.io/badge/MLOps-fastapp-fuchsia.svg
-    :target: https://github.com/rbturnbull/fastapp
+.. |torchapp badge| image:: https://img.shields.io/badge/MLOpps-torchapp-B1230A.svg
+    :target: https://rbturnbull.github.io/torchapp/
         
 .. end-badges
 
@@ -33,11 +33,21 @@ The software can be installed using ``pip``
 
 .. code-block:: bash
 
+    pip install bio-corgi
+
+.. warning ::
+
+    Do not try just `pip install corgi` because that is a different package.
+
+To install the latest version from the repository, you can use this command:
+
+.. code-block:: bash
+
     pip install git+https://github.com/rbturnbull/corgi.git
 
 .. note ::
 
-    Soon corgi will be able to be installed using PyPI.
+    Soon corgi will be able to be installed using conda.
 
 
 Usage
@@ -68,5 +78,5 @@ Credits
 ==================================
 
 * Robert Turnbull <robert.turnbull@unimelb.edu.au>
-* Created using fastapp (https://github.com/rbturnbull/fastapp)
+* Created using torchapp (https://github.com/rbturnbull/torchapp)
 
