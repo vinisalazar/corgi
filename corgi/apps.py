@@ -148,6 +148,7 @@ class Corgi(ta.TorchApp):
                 kernel_size=kernel_size,
                 factor=factor,
                 penultimate_dims=penultimate_dims,
+                num_classes=num_classes,
             )
 
         if cnn_only:
