@@ -104,12 +104,8 @@ class Corgi(ta.TorchApp):
             default=3, help="The size of the kernels for CNN only classifier.", tune=True, tune_choices=[3, 5, 7, 9]
         ),
         cnn_dims_start: int = ta.Param(
-            default=64,
-            help="The size of the number of filters in the first CNN layer.",
-            tune=True,
-            log=True,
-            tune_min=32,
-            tune_max=1024,
+            default=None,
+            help="The size of the number of filters in the first CNN layer. If not set then it is derived from the MACC",
         ),
         factor: float = ta.Param(
             default=2.0,
@@ -119,6 +115,18 @@ class Corgi(ta.TorchApp):
             tune_min=0.5,
             tune_max=4.0,
         ),
+        penultimate_dims: int = ta.Param(
+            default=512,
+            help="The factor to multiply the number of filters in the CNN layers each time it is downscaled.",
+            tune=True,
+            log=True,
+            tune_min=128,
+            tune_max=2048,
+        ),
+        macc:int = ta.Param(
+            default=10_000_000,
+            help="The approximate number of multiply or accumulate operations in the model. Used to set cnn_dims_start if not provided explicitly.",
+        ),
     ) -> nn.Module:
         """
         Creates a deep learning model for the Corgi to use.
@@ -127,6 +135,20 @@ class Corgi(ta.TorchApp):
             nn.Module: The created model.
         """
         num_classes = len(self.categories)
+
+        # if cnn_dims_start not given then calculate it from the MACC
+        if not cnn_dims_start:
+            assert macc
+
+            cnn_dims_start = models.calc_cnn_dims_start(
+                macc=macc,
+                seq_len=1024, # arbitary number
+                embedding_dim=embedding_dim,
+                cnn_layers=cnn_layers,
+                kernel_size=kernel_size,
+                factor=factor,
+                penultimate_dims=penultimate_dims,
+            )
 
         if cnn_only:
             return models.ConvClassifier(
@@ -139,6 +161,7 @@ class Corgi(ta.TorchApp):
                 final_bias=final_bias,
                 dropout=dropout,
                 cnn_dims_start=cnn_dims_start,
+                penultimate_dims=penultimate_dims,
             )
 
         return models.ConvRecurrantClassifier(
