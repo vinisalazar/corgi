@@ -232,7 +232,7 @@ def fasta_to_dataframe(
     seq_count = fasta_seq_count(fasta_path)
     print(f"{seq_count} sequences")
     if max_seqs and seq_count >= max_seqs:
-        print("Limiting to maximum number of sequences: {max_seqs}")
+        print(f"Limiting to maximum number of sequences: {max_seqs}")
         seq_count = max_seqs
 
     data = []
