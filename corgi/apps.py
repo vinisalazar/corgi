@@ -88,11 +88,11 @@ class Corgi(ta.TorchApp):
             default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
         ),
         dropout: float = ta.Param(
-            default=0.5,
+            default=0.2,
             help="The amount of dropout to use. (not currently enabled)",
             tune=True,
             tune_min=0.0,
-            tune_max=1.0,
+            tune_max=0.3,
         ),
         final_bias: bool = ta.Param(
             default=True,
@@ -113,14 +113,14 @@ class Corgi(ta.TorchApp):
             tune=True,
             log=True,
             tune_min=0.5,
-            tune_max=4.0,
+            tune_max=2.5,
         ),
         penultimate_dims: int = ta.Param(
-            default=512,
+            default=1024,
             help="The factor to multiply the number of filters in the CNN layers each time it is downscaled.",
             tune=True,
             log=True,
-            tune_min=128,
+            tune_min=512,
             tune_max=2048,
         ),
         macc:int = ta.Param(
@@ -196,41 +196,48 @@ class Corgi(ta.TorchApp):
     def inference_dataloader(
         self,
         learner,
-        fasta: List[Path] = ta.Param(None, help="A fasta file with sequences to be classified."),
+        file: List[Path] = ta.Param(None, help="A fasta file with sequences to be classified."),
         max_seqs: int = None,
+        batch_size:int = 1,
+        max_length:int = 5_000,
         **kwargs,
     ):
-        df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
-        dataloader = learner.dls.test_dl(df)
-        dataloader.before_batch.fs = [transforms.PadBatch()]
+        self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs)
         self.categories = learner.dls.vocab
-        self.inference_df = df
-        return dataloader
+        return self.seqio_dataloader
+        # df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
+        # dataloader = learner.dls.test_dl(df)
+        # dataloader.before_batch.fs = [transforms.PadBatch()]
+        
+        # self.inference_df = df
+        # return dataloader
 
     def output_results(
         self,
         results,
-        output_csv: Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV."),
         **kwargs,
     ):
+        chunk_details = pd.DataFrame(self.seqio_dataloader.chunk_details, columns=["file", "accession", "chunk"])
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
         results_df = pd.concat(
-            [self.inference_df, predictions_df],
+            [chunk_details.drop(columns=['chunk']), predictions_df],
             axis=1,
         )
 
-        predictions = torch.argmax(results[0], dim=1)
+        # Average over chunks
+        results_df = results_df.groupby(["file", "accession"]).mean().reset_index()
+
         columns = set(predictions_df.columns)
 
-        results_df['prediction'] = [self.categories[p] for p in predictions]
+        results_df['prediction'] = results_df[self.categories].idxmax(axis=1)
         results_df['eukaryotic'] = predictions_df[list(columns & set(refseq.EUKARYOTIC))].sum(axis=1)
         results_df['prokaryotic'] = predictions_df[list(columns & set(refseq.PROKARYOTIC))].sum(axis=1)
         results_df['organellar'] = predictions_df[list(columns & set(refseq.ORGANELLAR))].sum(axis=1)
 
-        results_df = results_df.drop(['sequence', 'validation', 'category'], axis=1)
-        if output_csv:
-            console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
-            results_df.to_csv(output_csv, index=False)
+        if csv:
+            console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
+            results_df.to_csv(csv, index=False)
         else:
             print("No output file given.")
 

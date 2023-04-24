@@ -1,3 +1,4 @@
+import torch
 from enum import Enum
 import random
 from itertools import chain
@@ -21,7 +22,7 @@ from fastai.torch_core import display_df
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
 from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
-from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA
+from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA, PadBatchX
 from .refseq import RefSeqCategory
 
 
@@ -247,6 +248,7 @@ def fasta_to_dataframe(
             validation_from_filename = False
 
     seqs = SeqIO.parse(fasta, "fasta")
+    breakpoint()
     for seq_index, seq in enumerate(track(seqs, total=seq_count, description=f"Reading fasta file:")):
         if max_seqs and seq_index >= max_seqs:
             break
@@ -294,3 +296,85 @@ class FastaDataloader:
         self.after_iter()
         if hasattr(self, 'it'):
             del self.it
+
+
+class SeqIODataloader:
+    def __init__(self, files, device, batch_size:int=1, min_length:int=128, max_length:int=5_000, max_seqs:int=None, format:str=""):
+        self.files = list(files)
+        self.device = device
+        self.format = format
+        self.chunk_details = []
+        self.max_length = max_length
+        self.batch_size = batch_size
+        self.min_length = min_length
+        self.pad = PadBatchX()
+        self.count = 0
+        self.max_seqs = max_seqs
+        seqs = 0
+        for file in self.files:
+            for record in self.parse(file):
+                if len(record.seq) < self.min_length:
+                    continue
+
+                if self.max_seqs and seqs >= self.max_seqs:
+                    break
+
+                chunks = len(record.seq)//self.max_length + 1
+                self.count += chunks
+                seqs += 1
+
+
+    def get_file_format(self, file):
+        if self.format:
+            return self.format
+        
+        file = Path(file)
+        suffix = file.suffix.lower()
+
+        if suffix in [".fa", ".fna", ".fasta"]:
+            return "fasta"
+
+        if suffix in [".genbank", ".gb", ".gbk"]:
+            return "genbank"
+
+        if suffix in [".tab", ".tsv"]:
+            return "tsv"
+
+        if suffix in [".fastq", ".fq"]:
+            return "fastq"
+
+        raise ValueError(f"Cannot determine file format of {file}.")
+    
+    def __len__(self):
+        return self.count
+
+    def parse(self, file):
+        return SeqIO.parse(file, self.get_file_format(file))
+
+    def __iter__(self):
+        batch = []
+        seqs = 0
+
+        for file in self.files:
+            for record in self.parse(file):
+                if len(record.seq) < self.min_length:
+                    continue
+
+                if self.max_seqs and seqs >= self.max_seqs:
+                    break
+
+                seqs += 1
+                t = dna_seq_to_tensor(record.seq)
+                chunks = len(t)//self.max_length + 1
+                for chunk_index, chunk in enumerate(t.chunk(chunks)):
+                    self.chunk_details.append( (file, record.id, chunk_index) )
+                    batch.append(chunk)
+
+                    if len(batch) >= self.batch_size:
+                        batch = self.pad(batch)
+                        yield batch
+                        batch = []
+
+        if batch:
+            batch = self.pad(batch)
+            yield batch
