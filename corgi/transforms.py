@@ -118,7 +118,6 @@ class ShortRandomSliceBatch(RandomSliceBatch):
 
 class PadBatch(Transform):
     def encodes(self, batch):
-
         max_len = 0
         for item in batch:
             max_len = max(item[0].shape[0], max_len)
@@ -127,3 +126,15 @@ class PadBatch(Transform):
             return (slice_tensor(tensor[0], max_len),) + tensor[1:]
 
         return list(map(pad, batch))
+
+
+class PadBatchX(Transform):
+    def encodes(self, batch):
+        max_len = 0
+        for item in batch:
+            max_len = max(item.shape[0], max_len)
+
+        def pad(tensor):
+            return slice_tensor(tensor, max_len).unsqueeze(dim=0)
+
+        return torch.cat(list(map(pad, batch))),

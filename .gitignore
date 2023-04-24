@@ -182,3 +182,6 @@ fixhash2.py
 has-accession.py
 lsrefseq.py
 neg.py
+validate_model_tiara.sh
+validate_model.sh
+tune.sh

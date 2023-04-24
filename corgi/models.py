@@ -1,9 +1,12 @@
 from typing import Callable, Optional
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+
+from rich.console import Console
+console = Console()
 
 
 def conv3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
@@ -244,6 +247,7 @@ class ConvClassifier(nn.Module):
         dropout=0.5,
         final_bias=True,
         lstm_dims: int = 0,
+        penultimate_dims: int = 1028,
     ):
         super().__init__()
 
@@ -308,9 +312,9 @@ class ConvClassifier(nn.Module):
         self.final = nn.Sequential(
             # nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
             # nn.ReLU(),
-            nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
+            nn.Linear(in_features=current_dims, out_features=penultimate_dims, bias=True),
             nn.ReLU(),
-            nn.Linear(in_features=current_dims, out_features=num_classes, bias=final_bias),
+            nn.Linear(in_features=penultimate_dims, out_features=num_classes, bias=final_bias),
         )
 
     def forward(self, x):
@@ -339,3 +343,98 @@ class ConvClassifier(nn.Module):
         predictions = self.final(x)
 
         return predictions
+
+
+class SequentialDebug(nn.Sequential):
+    def forward(self, input):
+        macs_cummulative = 0
+        from thop import profile
+
+        console.print(f"Input shape {input.shape}")
+        for module in self:
+            console.print(f"Module: {module} ({type(module)})")
+            macs, _ = profile(module, inputs=(input, ))
+            macs_cummulative += int(macs)
+            console.print(f"MACs: {int(macs)} (cummulative {macs_cummulative})")
+
+            input = module(input)
+            console.print(f"Output shape: {input.shape}")
+
+        return input
+
+
+
+class ConvProcessor(nn.Sequential):
+    def __init__(
+        self,
+        in_channels=8,
+        cnn_layers=6,
+        cnn_dims_start=64,
+        kernel_size_maxpool=2,
+        kernel_size=3,
+        factor=2,
+        dropout=0.5,
+        padding="same",
+        padding_mode="zeros",
+    ):
+        out_channels = cnn_dims_start
+        conv_layers = []
+        for layer_index in range(cnn_layers):
+            conv_layers += [
+                nn.Conv1d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    padding=padding,
+                    padding_mode=padding_mode,
+                ),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.MaxPool1d(kernel_size_maxpool),
+                # nn.Conv1d(
+                #     in_channels=out_channels,
+                #     out_channels=out_channels,
+                #     kernel_size=kernel_size,
+                #     stride=kernel_size_maxpool,
+                # ),
+            ]
+            in_channels = out_channels
+            out_channels = int(out_channels * factor)
+
+        super().__init__(*conv_layers)
+
+
+def calc_cnn_dims_start(
+    macc,
+    seq_len:int,
+    embedding_dim:int,
+    cnn_layers:int,
+    kernel_size:int,
+    factor:float,
+    penultimate_dims: int,
+    num_classes: int,
+):
+    """
+    Solving equation M = s k e c + \sum_{l=1}^{L-1} \frac{s}{2^{l} } k c^2 f^{2l-1} + c f^{L-1} p + p o
+    for c.
+
+    Args:
+        macc_per_base (int): the number of multiply-accumulate operations per base pair in the sequence.
+        embedding_dim (int): The size of the embedding.
+        cnn_layers (int): The number of CNN layers.
+        kernel_size (int): The size of the kernel in the CNN
+        factor (float): The multiplying factor for the CNN output layers.
+    """
+    b = kernel_size * embedding_dim * seq_len + factor ** (cnn_layers-1) * penultimate_dims
+    c = penultimate_dims * num_classes - macc
+
+    if cnn_layers == 1:
+        cnn_dims_start = -c/b
+    else:        
+        a = 0.0
+        for layer_index in range(1, cnn_layers):
+            a += seq_len * kernel_size * (0.5**layer_index) * (factor**(2 * layer_index - 1))
+        
+        cnn_dims_start = (-b + np.sqrt(b**2 - 4*a*c))/(2 * a)
+
+    return int(cnn_dims_start + 0.5)
