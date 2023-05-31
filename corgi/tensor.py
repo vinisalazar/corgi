@@ -42,7 +42,7 @@ def dna_seq_to_numpy(seq) -> np.ndarray:
 
     Should this be a transform??
     """
-    seq_as_numpy = np.array(str(seq), "c")
+    seq_as_numpy = np.array(str(seq).upper(), "c")
     seq_as_numpy = seq_as_numpy.view(np.uint8)
     # Ignore any characters in sequence which are below an ascii value of 'A' i.e. 65
     seq_as_numpy = seq_as_numpy[seq_as_numpy >= ord("A")]

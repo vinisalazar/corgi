@@ -366,10 +366,10 @@ class SeqIODataloader:
                 seqs += 1
                 t = dna_seq_to_tensor(record.seq)
                 chunks = len(t)//self.max_length + 1
+
                 for chunk_index, chunk in enumerate(t.chunk(chunks)):
                     self.chunk_details.append( (file, record.id, chunk_index) )
                     batch.append(chunk)
-
                     if len(batch) >= self.batch_size:
                         batch = self.pad(batch)
                         yield batch

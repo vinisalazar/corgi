@@ -123,6 +123,7 @@ class Corgi(ta.TorchApp):
             tune_min=512,
             tune_max=2048,
         ),
+        include_length: bool = False,
         macc:int = ta.Param(
             default=10_000_000,
             help="The approximate number of multiply or accumulate operations in the model. Used to set cnn_dims_start if not provided explicitly.",
@@ -163,6 +164,7 @@ class Corgi(ta.TorchApp):
                 dropout=dropout,
                 cnn_dims_start=cnn_dims_start,
                 penultimate_dims=penultimate_dims,
+                include_length=include_length,
             )
 
         return models.ConvRecurrantClassifier(
@@ -200,9 +202,10 @@ class Corgi(ta.TorchApp):
         max_seqs: int = None,
         batch_size:int = 1,
         max_length:int = 5_000,
+        min_length:int = 128,
         **kwargs,
     ):
-        self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs)
+        self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs, min_length=min_length)
         self.categories = learner.dls.vocab
         return self.seqio_dataloader
         # df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator

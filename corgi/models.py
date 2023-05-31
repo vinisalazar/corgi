@@ -248,6 +248,8 @@ class ConvClassifier(nn.Module):
         final_bias=True,
         lstm_dims: int = 0,
         penultimate_dims: int = 1028,
+        include_length: bool = False,
+        length_scaling:float = 3_000.0,
     ):
         super().__init__()
 
@@ -260,6 +262,8 @@ class ConvClassifier(nn.Module):
         self.kernel_size = kernel_size
         self.factor = factor
         self.dropout = dropout
+        self.include_length = include_length
+        self.length_scaling = length_scaling
 
         self.embedding = nn.Embedding(
             num_embeddings=num_embeddings,
@@ -309,6 +313,7 @@ class ConvClassifier(nn.Module):
 
         self.average_pool = nn.AdaptiveAvgPool1d(1)
 
+        current_dims += int(include_length)
         self.final = nn.Sequential(
             # nn.Linear(in_features=current_dims, out_features=current_dims, bias=True),
             # nn.ReLU(),
@@ -320,6 +325,7 @@ class ConvClassifier(nn.Module):
     def forward(self, x):
         # Convert to int because it may be simply a byte
         x = x.int()
+        length = x.shape[-1]
         x = self.embedding(x)
 
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
@@ -340,9 +346,22 @@ class ConvClassifier(nn.Module):
         else:
             x = torch.mean(x, axis=-1)
 
+        if getattr(self, 'include_length', False):
+            length_tensor = torch.full( (x.shape[0], 1), length/self.length_scaling, device=x.device )
+            x = torch.cat([x, length_tensor], dim=1)
+
         predictions = self.final(x)
 
         return predictions
+
+    def new_final(self, output_size):
+        final_in_features = list(self.final.modules())[1].in_features
+
+        self.final = nn.Sequential(
+            nn.Linear(in_features=final_in_features, out_features=final_in_features, bias=True),
+            nn.ReLU(),
+            nn.Linear(in_features=final_in_features, out_features=output_size, bias=final_bias),
+        )
 
 
 class SequentialDebug(nn.Sequential):
