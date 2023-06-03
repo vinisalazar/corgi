@@ -1,4 +1,5 @@
 from typing import Callable, Optional
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,6 +8,32 @@ from torch import Tensor
 
 from rich.console import Console
 console = Console()
+
+
+class PositionalEncoding(nn.Module):
+    """
+    Adapted from https://pytorch.org/tutorials/beginner/transformer_tutorial.html
+    """
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
 
 
 def conv3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
@@ -250,6 +277,8 @@ class ConvClassifier(nn.Module):
         penultimate_dims: int = 1028,
         include_length: bool = False,
         length_scaling:float = 3_000.0,
+        transformer_heads: int = 8,
+        transformer_layers: int = 6,
     ):
         super().__init__()
 
@@ -264,6 +293,8 @@ class ConvClassifier(nn.Module):
         self.dropout = dropout
         self.include_length = include_length
         self.length_scaling = length_scaling
+        self.transformer_layers = transformer_layers
+        self.transformer_heads = transformer_heads
 
         self.embedding = nn.Embedding(
             num_embeddings=num_embeddings,
@@ -296,6 +327,13 @@ class ConvClassifier(nn.Module):
             out_channels = int(out_channels * factor)
 
         self.conv = nn.Sequential(*conv_layers)
+
+        if self.transformer_layers:
+            self.positional_encoding = PositionalEncoding(d_model=in_channels)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=in_channels, nhead=self.transformer_heads, batch_first=True)
+            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=self.transformer_layers)
+        else:
+            self.transformer_encoder = None
 
         self.lstm_dims = lstm_dims
         if lstm_dims:
@@ -331,6 +369,13 @@ class ConvClassifier(nn.Module):
         # Transpose seq_len with embedding dims to suit convention of pytorch CNNs (batch_size, input_size, seq_len)
         x = x.transpose(1, 2)
         x = self.conv(x)
+
+        if self.transformer_encoder:
+            breakpoint()
+            x = x.transpose(2, 1)
+            x = self.positional_encoding(x)
+            x = self.transformer_encoder(x)
+            x = x.transpose(1, 2)
 
         if self.lstm_dims:
             x = x.transpose(2, 1)

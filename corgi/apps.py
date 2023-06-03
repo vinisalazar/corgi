@@ -124,6 +124,8 @@ class Corgi(ta.TorchApp):
             tune_max=2048,
         ),
         include_length: bool = False,
+        transformer_heads: int = ta.Param(8, help="The number of heads in the transformer."),
+        transformer_layers: int = ta.Param(0, help="The number of layers in the transformer. If zero then no transformer is used."),
         macc:int = ta.Param(
             default=10_000_000,
             help="The approximate number of multiply or accumulate operations in the model. Used to set cnn_dims_start if not provided explicitly.",
@@ -165,6 +167,8 @@ class Corgi(ta.TorchApp):
                 cnn_dims_start=cnn_dims_start,
                 penultimate_dims=penultimate_dims,
                 include_length=include_length,
+                transformer_layers=transformer_layers,
+                transformer_heads=transformer_heads,
             )
 
         return models.ConvRecurrantClassifier(
