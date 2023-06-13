@@ -40,6 +40,8 @@ class Corgi(ta.TorchApp):
         dataloader_type: dataloaders.DataloaderType = ta.Param(
             default=dataloaders.DataloaderType.PLAIN, case_sensitive=False
         ),
+        validation_seq_length:int = 1_000,
+        deform_lambda:float = ta.Param(default=None, help="The lambda for the deform transform."),
     ) -> DataLoaders:
         """
         Creates a FastAI DataLoaders object which Corgi uses in training and prediction.
@@ -53,7 +55,12 @@ class Corgi(ta.TorchApp):
         if base_dir is None:
             raise Exception("No base_dir given")
         dls = dataloaders.create_dataloaders_refseq_path(
-            csv, base_dir=base_dir, batch_size=batch_size, dataloader_type=dataloader_type
+            csv, 
+            base_dir=base_dir, 
+            batch_size=batch_size, 
+            dataloader_type=dataloader_type, 
+            deform_lambda=deform_lambda, 
+            validation_seq_length=validation_seq_length,
         )
         self.categories = dls.vocab
         return dls

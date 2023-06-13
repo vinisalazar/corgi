@@ -22,7 +22,7 @@ from fastai.torch_core import display_df
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
 from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
-from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA, PadBatchX
+from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA, PadBatchX, DeterministicSliceBatch, DeformBatch
 from .refseq import RefSeqCategory
 
 
@@ -134,7 +134,14 @@ class DataloaderType(str, Enum):
     STRATIFIED = "STRATIFIED"
 
 
-def create_dataloaders_refseq_path(dataframe_path: Path, base_dir: Path, batch_size=64, **kwargs):
+def create_dataloaders_refseq_path(
+    dataframe_path: Path, 
+    base_dir: Path, 
+    batch_size:int=64, 
+    deform_lambda: float = None,
+    validation_seq_length:int=1_000, 
+    **kwargs
+):
     dataframe_path = Path(dataframe_path)
 
     print('Training using:\t', dataframe_path)
@@ -144,7 +151,14 @@ def create_dataloaders_refseq_path(dataframe_path: Path, base_dir: Path, batch_s
         df = pd.read_csv(str(dataframe_path))
 
     print(f'Dataframe has {len(df)} sequences.')
-    dls = create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir, **kwargs)
+    dls = create_dataloaders_refseq(
+        df, 
+        batch_size=batch_size, 
+        base_dir=base_dir, 
+        deform_lambda=deform_lambda, 
+        validation_seq_length=validation_seq_length, 
+        **kwargs
+    )
     return dls
 
 
@@ -154,11 +168,21 @@ def create_dataloaders_refseq(
     batch_size=64,
     dataloader_type: DataloaderType = DataloaderType.PLAIN,
     verbose: bool = True,
+    validation_seq_length:int = 1_000,
+    deform_lambda: float = None,
     **kwargs,
 ) -> DataLoaders:
     categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
 
-    dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
+    # Set up batch transforms
+    before_batch = [
+        RandomSliceBatch(only_split_index=0), 
+        DeterministicSliceBatch(seq_length=validation_seq_length, only_split_index=1),
+    ]
+    if deform_lambda is not None:
+        before_batch.append(DeformBatch(deform_lambda=deform_lambda))
+
+    dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=before_batch)
 
     validation_column = "validation"
     random.seed(42)
@@ -248,7 +272,6 @@ def fasta_to_dataframe(
             validation_from_filename = False
 
     seqs = SeqIO.parse(fasta, "fasta")
-    breakpoint()
     for seq_index, seq in enumerate(track(seqs, total=seq_count, description=f"Reading fasta file:")):
         if max_seqs and seq_index >= max_seqs:
             break
