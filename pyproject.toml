@@ -28,7 +28,7 @@ dask = "^2021.7.1"
 progressbar2 = "^3.53.1"
 h5py = "^3.1.0"
 humanize = "^3.10.0"
-pyarrow = "^4.0.1"
+pyarrow = ">=4.0.1"
 plotly = "^5.3.1"
 appdirs = "^1.4.4"
 beautifulsoup4 = "^4.10.0"
@@ -38,7 +38,7 @@ optuna = "^2.10.0"
 cryptography = "^36.0.1"
 PyMySQL = "^1.0.2"
 termgraph = "^0.5.3"
-torchapp = "^0.2.3"
+torchapp = {git = "https://github.com/rbturnbull/torchapp.git", branch="diffusion"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
