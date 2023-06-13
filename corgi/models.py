@@ -370,8 +370,7 @@ class ConvClassifier(nn.Module):
         x = x.transpose(1, 2)
         x = self.conv(x)
 
-        if self.transformer_encoder:
-            breakpoint()
+        if hasattr(self, 'transformer_encoder') and self.transformer_encoder:
             x = x.transpose(2, 1)
             x = self.positional_encoding(x)
             x = self.transformer_encoder(x)
