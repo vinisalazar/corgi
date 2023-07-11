@@ -8,10 +8,8 @@ int_to_vocab = dict(zip(vocab_to_int.values(), vocab_to_int.keys()))
 
 class TensorDNA(TensorBase):
     def __str__(self):
-        breakpoint()
-        # return str(self.tolist())[:50]
         seq_str = self.as_chars()
-        return f"{seq_str} [{length}]"
+        return f"{seq_str} [{len(seq_str)}]"
 
     def show(self, ctx=None, **kwargs):
         return str(self)
