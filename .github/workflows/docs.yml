@@ -16,11 +16,11 @@ jobs:
     - name: Install poetry
       run: pipx install poetry
     - name: Install dependencies for Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'poetry'
-    - run: poetry install
+      run: |
+        poetry env use "${{ matrix.python-version }}"
+        poetry install
+        # install a version of pytorch that does not require a GPU / CUDA
+        poetry run pip install torch --extra-index-url https://download.pytorch.org/whl/cpu --force
     - name: Docs
       run: |
         poetry run sphinx-build -b html docs gh-pages
