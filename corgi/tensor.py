@@ -8,7 +8,13 @@ int_to_vocab = dict(zip(vocab_to_int.values(), vocab_to_int.keys()))
 
 class TensorDNA(TensorBase):
     def __str__(self):
-        # return str(self.tolist())[:50]
+        seq_str = self.as_chars()
+        return f"{seq_str} [{len(seq_str)}]"
+
+    def show(self, ctx=None, **kwargs):
+        return str(self)
+
+    def as_chars(self):
         items = self.tolist()
         truncate_at = 50
         if type(items) == int:
@@ -21,10 +27,11 @@ class TensorDNA(TensorBase):
             items = items[:midpoint] + [".."] + items[-midpoint:]
         chars = [int_to_vocab[x] if x in int_to_vocab else str(x) for x in items]
         seq_str = "".join(chars)
-        return f"{seq_str} [{length}]"
+        return seq_str
 
-    def show(self, ctx=None, **kwargs):
-        return str(self)
+    def as_biopython(self):
+        from Bio.Seq import Seq
+        return Seq(self.as_chars())
 
 
 def dna_seq_to_numpy(seq) -> np.ndarray:
@@ -33,7 +40,7 @@ def dna_seq_to_numpy(seq) -> np.ndarray:
 
     Should this be a transform??
     """
-    seq_as_numpy = np.array(str(seq), "c")
+    seq_as_numpy = np.array(str(seq).upper(), "c")
     seq_as_numpy = seq_as_numpy.view(np.uint8)
     # Ignore any characters in sequence which are below an ascii value of 'A' i.e. 65
     seq_as_numpy = seq_as_numpy[seq_as_numpy >= ord("A")]

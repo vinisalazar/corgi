@@ -40,6 +40,8 @@ class Corgi(ta.TorchApp):
         dataloader_type: dataloaders.DataloaderType = ta.Param(
             default=dataloaders.DataloaderType.PLAIN, case_sensitive=False
         ),
+        validation_seq_length:int = 1_000,
+        deform_lambda:float = ta.Param(default=None, help="The lambda for the deform transform."),
     ) -> DataLoaders:
         """
         Creates a FastAI DataLoaders object which Corgi uses in training and prediction.
@@ -53,7 +55,12 @@ class Corgi(ta.TorchApp):
         if base_dir is None:
             raise Exception("No base_dir given")
         dls = dataloaders.create_dataloaders_refseq_path(
-            csv, base_dir=base_dir, batch_size=batch_size, dataloader_type=dataloader_type
+            csv, 
+            base_dir=base_dir, 
+            batch_size=batch_size, 
+            dataloader_type=dataloader_type, 
+            deform_lambda=deform_lambda, 
+            validation_seq_length=validation_seq_length,
         )
         self.categories = dls.vocab
         return dls
@@ -88,11 +95,11 @@ class Corgi(ta.TorchApp):
             default=0, help="The size of a dense layer after the LSTM. If this is zero then this layer isn't used."
         ),
         dropout: float = ta.Param(
-            default=0.5,
+            default=0.2,
             help="The amount of dropout to use. (not currently enabled)",
             tune=True,
             tune_min=0.0,
-            tune_max=1.0,
+            tune_max=0.3,
         ),
         final_bias: bool = ta.Param(
             default=True,
@@ -113,16 +120,19 @@ class Corgi(ta.TorchApp):
             tune=True,
             log=True,
             tune_min=0.5,
-            tune_max=4.0,
+            tune_max=2.5,
         ),
         penultimate_dims: int = ta.Param(
-            default=512,
+            default=1024,
             help="The factor to multiply the number of filters in the CNN layers each time it is downscaled.",
             tune=True,
             log=True,
-            tune_min=128,
+            tune_min=512,
             tune_max=2048,
         ),
+        include_length: bool = False,
+        transformer_heads: int = ta.Param(8, help="The number of heads in the transformer."),
+        transformer_layers: int = ta.Param(0, help="The number of layers in the transformer. If zero then no transformer is used."),
         macc:int = ta.Param(
             default=10_000_000,
             help="The approximate number of multiply or accumulate operations in the model. Used to set cnn_dims_start if not provided explicitly.",
@@ -163,6 +173,9 @@ class Corgi(ta.TorchApp):
                 dropout=dropout,
                 cnn_dims_start=cnn_dims_start,
                 penultimate_dims=penultimate_dims,
+                include_length=include_length,
+                transformer_layers=transformer_layers,
+                transformer_heads=transformer_heads,
             )
 
         return models.ConvRecurrantClassifier(
@@ -196,47 +209,55 @@ class Corgi(ta.TorchApp):
     def inference_dataloader(
         self,
         learner,
-        fasta: List[Path] = ta.Param(None, help="A fasta file with sequences to be classified."),
+        file: List[Path] = ta.Param(None, help="A fasta file with sequences to be classified."),
         max_seqs: int = None,
+        batch_size:int = 1,
+        max_length:int = 5_000,
+        min_length:int = 128,
         **kwargs,
     ):
-        df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
-        dataloader = learner.dls.test_dl(df)
-        dataloader.before_batch.fs = [transforms.PadBatch()]
+        self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs, min_length=min_length)
         self.categories = learner.dls.vocab
-        self.inference_df = df
-        return dataloader
+        return self.seqio_dataloader
+        # df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
+        # dataloader = learner.dls.test_dl(df)
+        # dataloader.before_batch.fs = [transforms.PadBatch()]
+        
+        # self.inference_df = df
+        # return dataloader
 
     def output_results(
         self,
         results,
-        output_csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen."),
-        output_fasta_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
-        threshold: float = ta.Param(
-            default=None, 
-            help="The threshold to use for filtering. "
-                "If not given, then only the most likely category used for filtering.",
-        ),
+        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen."),
+        # output_fasta_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        # threshold: float = ta.Param(
+        #     default=None, 
+        #     help="The threshold to use for filtering. "
+        #         "If not given, then only the most likely category used for filtering.",
+        # ),
         **kwargs,
     ):
+        chunk_details = pd.DataFrame(self.seqio_dataloader.chunk_details, columns=["file", "accession", "chunk"])
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
         results_df = pd.concat(
-            [self.inference_df, predictions_df],
+            [chunk_details.drop(columns=['chunk']), predictions_df],
             axis=1,
         )
 
-        predictions = torch.argmax(results[0], dim=1)
+        # Average over chunks
+        results_df = results_df.groupby(["file", "accession"]).mean().reset_index()
+
         columns = set(predictions_df.columns)
 
-        results_df['prediction'] = [self.categories[p] for p in predictions]
+        results_df['prediction'] = results_df[self.categories].idxmax(axis=1)
         results_df['eukaryotic'] = predictions_df[list(columns & set(refseq.EUKARYOTIC))].sum(axis=1)
         results_df['prokaryotic'] = predictions_df[list(columns & set(refseq.PROKARYOTIC))].sum(axis=1)
         results_df['organellar'] = predictions_df[list(columns & set(refseq.ORGANELLAR))].sum(axis=1)
 
-        results_df = results_df.drop(['sequence', 'validation', 'category'], axis=1)
-        if output_csv:
-            console.print(f"Writing results for {len(results_df)} sequences to: {output_csv}")
-            results_df.to_csv(output_csv, index=False)
+        if csv:
+            console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
+            results_df.to_csv(csv, index=False)
         else:
             print("No output file given.")
 
@@ -290,4 +311,4 @@ class Corgi(ta.TorchApp):
         self.category_counts_dataloader(dataloaders.valid, "Validation")
 
     def pretrained_location(self) -> str:
-        return "https://github.com/rbturnbull/corgi/releases/download/v0.2.2-alpha/corgi-learner-0.2.2.pkl"
+        return "https://github.com/rbturnbull/corgi/releases/download/v0.3.1-alpha/corgi-0.3.pkl"

@@ -1,3 +1,4 @@
+import torch
 from enum import Enum
 import random
 from itertools import chain
@@ -21,7 +22,7 @@ from fastai.torch_core import display_df
 from fastai.data.transforms import ColSplitter, ColReader, RandomSplitter
 
 from .tensor import TensorDNA, dna_seq_to_numpy, dna_seq_to_tensor
-from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA
+from .transforms import RandomSliceBatch, SliceTransform, RowToTensorDNA, PadBatchX, DeterministicSliceBatch, DeformBatch
 from .refseq import RefSeqCategory
 
 
@@ -133,7 +134,14 @@ class DataloaderType(str, Enum):
     STRATIFIED = "STRATIFIED"
 
 
-def create_dataloaders_refseq_path(dataframe_path: Path, base_dir: Path, batch_size=64, **kwargs):
+def create_dataloaders_refseq_path(
+    dataframe_path: Path, 
+    base_dir: Path, 
+    batch_size:int=64, 
+    deform_lambda: float = None,
+    validation_seq_length:int=1_000, 
+    **kwargs
+):
     dataframe_path = Path(dataframe_path)
 
     print('Training using:\t', dataframe_path)
@@ -143,7 +151,14 @@ def create_dataloaders_refseq_path(dataframe_path: Path, base_dir: Path, batch_s
         df = pd.read_csv(str(dataframe_path))
 
     print(f'Dataframe has {len(df)} sequences.')
-    dls = create_dataloaders_refseq(df, batch_size=batch_size, base_dir=base_dir, **kwargs)
+    dls = create_dataloaders_refseq(
+        df, 
+        batch_size=batch_size, 
+        base_dir=base_dir, 
+        deform_lambda=deform_lambda, 
+        validation_seq_length=validation_seq_length, 
+        **kwargs
+    )
     return dls
 
 
@@ -153,11 +168,21 @@ def create_dataloaders_refseq(
     batch_size=64,
     dataloader_type: DataloaderType = DataloaderType.PLAIN,
     verbose: bool = True,
+    validation_seq_length:int = 1_000,
+    deform_lambda: float = None,
     **kwargs,
 ) -> DataLoaders:
     categories = [RefSeqCategory(name, base_dir=base_dir) for name in df.category.unique()]
 
-    dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=RandomSliceBatch)
+    # Set up batch transforms
+    before_batch = [
+        RandomSliceBatch(only_split_index=0), 
+        DeterministicSliceBatch(seq_length=validation_seq_length, only_split_index=1),
+    ]
+    if deform_lambda is not None:
+        before_batch.append(DeformBatch(deform_lambda=deform_lambda))
+
+    dataloaders_kwargs = dict(bs=batch_size, drop_last=False, before_batch=before_batch)
 
     validation_column = "validation"
     random.seed(42)
@@ -232,7 +257,7 @@ def fasta_to_dataframe(
     seq_count = fasta_seq_count(fasta_path)
     print(f"{seq_count} sequences")
     if max_seqs and seq_count >= max_seqs:
-        print("Limiting to maximum number of sequences: {max_seqs}")
+        print(f"Limiting to maximum number of sequences: {max_seqs}")
         seq_count = max_seqs
 
     data = []
@@ -294,3 +319,85 @@ class FastaDataloader:
         self.after_iter()
         if hasattr(self, 'it'):
             del self.it
+
+
+class SeqIODataloader:
+    def __init__(self, files, device, batch_size:int=1, min_length:int=128, max_length:int=5_000, max_seqs:int=None, format:str=""):
+        self.files = list(files)
+        self.device = device
+        self.format = format
+        self.chunk_details = []
+        self.max_length = max_length
+        self.batch_size = batch_size
+        self.min_length = min_length
+        self.pad = PadBatchX()
+        self.count = 0
+        self.max_seqs = max_seqs
+        seqs = 0
+        for file in self.files:
+            for record in self.parse(file):
+                if len(record.seq) < self.min_length:
+                    continue
+
+                if self.max_seqs and seqs >= self.max_seqs:
+                    break
+
+                chunks = len(record.seq)//self.max_length + 1
+                self.count += chunks
+                seqs += 1
+
+
+    def get_file_format(self, file):
+        if self.format:
+            return self.format
+        
+        file = Path(file)
+        suffix = file.suffix.lower()
+
+        if suffix in [".fa", ".fna", ".fasta"]:
+            return "fasta"
+
+        if suffix in [".genbank", ".gb", ".gbk"]:
+            return "genbank"
+
+        if suffix in [".tab", ".tsv"]:
+            return "tsv"
+
+        if suffix in [".fastq", ".fq"]:
+            return "fastq"
+
+        raise ValueError(f"Cannot determine file format of {file}.")
+    
+    def __len__(self):
+        return self.count
+
+    def parse(self, file):
+        return SeqIO.parse(file, self.get_file_format(file))
+
+    def __iter__(self):
+        batch = []
+        seqs = 0
+
+        for file in self.files:
+            for record in self.parse(file):
+                if len(record.seq) < self.min_length:
+                    continue
+
+                if self.max_seqs and seqs >= self.max_seqs:
+                    break
+
+                seqs += 1
+                t = dna_seq_to_tensor(record.seq)
+                chunks = len(t)//self.max_length + 1
+
+                for chunk_index, chunk in enumerate(t.chunk(chunks)):
+                    self.chunk_details.append( (file, record.id, chunk_index) )
+                    batch.append(chunk)
+                    if len(batch) >= self.batch_size:
+                        batch = self.pad(batch)
+                        yield batch
+                        batch = []
+
+        if batch:
+            batch = self.pad(batch)
+            yield batch

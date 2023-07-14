@@ -13,12 +13,32 @@ from scipy.stats import nbinom
 from .tensor import TensorDNA
 
 
-def slice_tensor(tensor, size):
+class SplitTransform(Transform):
+    """ 
+    Only performs the transform if the split index matches `only_split_index`
+    """
+    def __init__(self, only_split_index=None, **kwargs):
+        super().__init__(**kwargs)
+        self.current_split_idx = None
+        self.only_split_index = only_split_index
+
+    def __call__(self, 
+        b, 
+        split_idx:int=None, # Index of the train/valid dataset
+        **kwargs
+    ):
+        if self.only_split_index == split_idx or self.only_split_index is None:
+            return super().__call__(b, split_idx=split_idx, **kwargs)
+        return b
+
+
+def slice_tensor(tensor, size, start_index=None):
     original_length = tensor.shape[0]
-    if original_length <= size:
-        start_index = 0
-    else:
-        start_index = random.randrange(0, original_length - size)
+    if start_index is None:
+        if original_length <= size:
+            start_index = 0
+        else:
+            start_index = random.randrange(0, original_length - size)
     end_index = start_index + size
     if end_index > original_length:
         sliced = tensor[start_index:]
@@ -75,11 +95,12 @@ class RowToTensorDNA(Transform):
         return TensorDNA(self.category_dict[row['category']].get_seq(row["accession"]))
 
 
-@dataclass  # why is this a dataclass??
-class RandomSliceBatch(Transform):
+class RandomSliceBatch(SplitTransform):
     rand_generator = None
 
-    def __init__(self, rand_generator=None, distribution=None, minimum: int = 150, maximum: int = 3_000):
+    def __init__(self, rand_generator=None, distribution=None, minimum: int = 150, maximum: int = 3_000, **kwargs):
+        super().__init__(**kwargs)
+
         self.rand_generator = rand_generator or self.default_rand_generator
         if distribution is None:
             from scipy.stats import skewnorm
@@ -107,6 +128,19 @@ class RandomSliceBatch(Transform):
         return list(map(slice, batch))
 
 
+class DeterministicSliceBatch(SplitTransform):
+    def __init__(self, seq_length, **kwargs):
+        super().__init__(**kwargs)
+
+        self.seq_length = seq_length
+
+    def slice(self, tensor):
+        return (slice_tensor(tensor[0], self.seq_length, start_index=0),) + tensor[1:]
+
+    def encodes(self, batch):
+        return list(map(self.slice, batch))
+
+
 class ShortRandomSliceBatch(RandomSliceBatch):
     def __init__(self, rand_generator=None, distribution=None, minimum: int = 80, maximum: int = 150):
         if distribution is None:
@@ -118,7 +152,6 @@ class ShortRandomSliceBatch(RandomSliceBatch):
 
 class PadBatch(Transform):
     def encodes(self, batch):
-
         max_len = 0
         for item in batch:
             max_len = max(item[0].shape[0], max_len)
@@ -127,3 +160,52 @@ class PadBatch(Transform):
             return (slice_tensor(tensor[0], max_len),) + tensor[1:]
 
         return list(map(pad, batch))
+
+
+class PadBatchX(Transform):
+    def encodes(self, batch):
+        max_len = 0
+        for item in batch:
+            max_len = max(item.shape[0], max_len)
+
+        def pad(tensor):
+            return slice_tensor(tensor, max_len).unsqueeze(dim=0)
+
+        return torch.cat(list(map(pad, batch))),
+
+
+class DeformBatch(SplitTransform):
+    def __init__(self, deform_lambda=4, **kwargs):
+        super().__init__(**kwargs)
+        self.deform_lambda = deform_lambda
+        self.distribution = torch.distributions.exponential.Exponential(deform_lambda)
+        self.states = len(VOCAB)
+
+    # def encodes_as_tensor(self, batch):
+    #     print(type(batch), len(batch), type(batch[0]), len(batch[0]))
+    #     assert 0
+    #     times = self.distribution.sample()
+    #     alt_states = self.states-1
+    #     probability_same = 1.0/self.states + alt_states/self.states * torch.exp(-times)
+    #     probability_same = probability_same.unsqueeze(1)
+    #     weights = torch.cat( [probability_same, (1-probability_same).repeat(1,alt_states)/alt_states], dim=1)
+    #     batch += torch.multinomial(weights, batch.shape[1], replacement=True)
+    #     batch = batch % self.states
+        
+    #     print(weights)
+    #     return batch
+
+    def deform(self, tensor):
+        times = self.distribution.sample()
+        alt_states = self.states-1
+        probability_same = 1.0/self.states + alt_states/self.states * torch.exp(-times)
+        # weights = torch.cat( [probability_same, (1-probability_same).repeat(1,alt_states)/alt_states], dim=1)
+        weights = torch.as_tensor([probability_same] + alt_states * [(1-probability_same)/alt_states])
+        x = tensor[0] + torch.multinomial(weights, len(tensor[0]), replacement=True)
+        x = x % self.states
+
+        return (x,) + tensor[1:]
+
+    def encodes(self, batch):
+        batch = list(map(self.deform, batch))
+        return batch
