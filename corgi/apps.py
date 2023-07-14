@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List
 from torch import nn
-import torch
 import pandas as pd
 from fastai.data.core import DataLoaders
 from torchapp.util import copy_func, call_func, change_typer_to_defaults, add_kwargs
@@ -11,6 +10,8 @@ import torchapp as ta
 from rich.console import Console
 from rich.table import Table
 from rich.box import SIMPLE
+from Bio import SeqIO
+import time
 
 from fastai.losses import CrossEntropyLossFlat
 
@@ -219,19 +220,26 @@ class Corgi(ta.TorchApp):
         self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs, min_length=min_length)
         self.categories = learner.dls.vocab
         return self.seqio_dataloader
-        # df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
-        # dataloader = learner.dls.test_dl(df)
-        # dataloader.before_batch.fs = [transforms.PadBatch()]
-        
-        # self.inference_df = df
-        # return dataloader
 
     def output_results(
         self,
         results,
-        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        output_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen inside the output directory."),
+        save_filtered:bool = ta.Param(default=True, help="Whether or not to save the filtered sequences."),
+        threshold: float = ta.Param(
+            default=None, 
+            help="The threshold to use for filtering. "
+                "If not given, then only the most likely category used for filtering.",
+        ),
         **kwargs,
     ):
+        if not output_dir:
+            time_string = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
+            output_dir = f"corgi-output-{time_string}"
+
+        output_dir = Path(output_dir)
+
         chunk_details = pd.DataFrame(self.seqio_dataloader.chunk_details, columns=["file", "accession", "chunk"])
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
         results_df = pd.concat(
@@ -249,11 +257,43 @@ class Corgi(ta.TorchApp):
         results_df['prokaryotic'] = predictions_df[list(columns & set(refseq.PROKARYOTIC))].sum(axis=1)
         results_df['organellar'] = predictions_df[list(columns & set(refseq.ORGANELLAR))].sum(axis=1)
 
-        if csv:
-            console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
-            results_df.to_csv(csv, index=False)
-        else:
-            print("No output file given.")
+        if not csv:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            csv = output_dir / f"corgi-output.csv"
+
+        console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
+        results_df.to_csv(csv, index=False)
+
+        # Write all the sequences to fasta files
+        if save_filtered:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            file_handles = {}
+
+            for file, record in self.seqio_dataloader.iter_records():
+                row = results_df[ (results_df.accession == record.id) & (results_df.file == file) ]
+                if len(row) == 0:
+                    categories = ["unclassified"]
+                else:
+                    # Get the categories to write to
+                    if not threshold:
+                        # if no threshold then just use the most likely category
+                        categories = [row['prediction'].item()]
+                    else:
+                        # otherwise use all categories above or equal to the threshold
+                        category_predictions = row.iloc[0][self.categories]
+                        categories = [category_predictions[category_predictions >= threshold].index.item()]
+
+                for category in categories:
+                    if category not in file_handles:
+                        file_path = output_dir / f"{category}.fasta"
+                        file_handles[category] = open(file_path, "w")
+                        console.print(f"Writing {category} sequences to: {file_path}")
+
+                    SeqIO.write(record, file_handles[category], "fasta")
+
+            for file_handle in file_handles.values():
+                file_handle.close()
 
         # Output bar chart
         from termgraph.module import Data, BarChart, Args

@@ -23,6 +23,9 @@ output:
       --batch-size INTEGER            The batch size.  [default: 32]
       --dataloader-type [PLAIN|WEIGHTED|STRATIFIED]
                                       [default: DataloaderType.PLAIN]
+      --validation-seq-length INTEGER
+                                      [default: 1000]
+      --deform-lambda FLOAT           The lambda for the deform transform.
       --embedding-dim INTEGER         The size of the embeddings for the nucleotides
                                       (N, A, G, C, T).  [default: 8]
       --filters INTEGER               The number of filters in each of the 1D
@@ -38,17 +41,32 @@ output:
                                       this is zero then this layer isn't used.
                                       [default: 0]
       --dropout FLOAT                 The amount of dropout to use. (not currently
-                                      enabled)  [default: 0.5]
+                                      enabled)  [default: 0.2]
       --final-bias / --no-final-bias  Whether or not to use bias in the final layer.
                                       [default: final-bias]
       --cnn-only / --no-cnn-only      [default: cnn-only]
       --kernel-size INTEGER           The size of the kernels for CNN only
                                       classifier.  [default: 3]
       --cnn-dims-start INTEGER        The size of the number of filters in the first
-                                      CNN layer.  [default: 64]
+                                      CNN layer. If not set then it is derived from
+                                      the MACC
       --factor FLOAT                  The factor to multiply the number of filters
                                       in the CNN layers each time it is downscaled.
                                       [default: 2.0]
+      --penultimate-dims INTEGER      The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
+                                      [default: 1024]
+      --include-length / --no-include-length
+                                      [default: no-include-length]
+      --transformer-heads INTEGER     The number of heads in the transformer.
+                                      [default: 8]
+      --transformer-layers INTEGER    The number of layers in the transformer. If
+                                      zero then no transformer is used.  [default:
+                                      0]
+      --macc INTEGER                  The approximate number of multiply or
+                                      accumulate operations in the model. Used to
+                                      set cnn_dims_start if not provided explicitly.
+                                      [default: 10000000]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by

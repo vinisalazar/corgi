@@ -14,4 +14,7 @@ output:
       --batch-size INTEGER            The batch size.  [default: 32]
       --dataloader-type [PLAIN|WEIGHTED|STRATIFIED]
                                       [default: DataloaderType.PLAIN]
+      --validation-seq-length INTEGER
+                                      [default: 1000]
+      --deform-lambda FLOAT           The lambda for the deform transform.
       --help                          Show this message and exit.

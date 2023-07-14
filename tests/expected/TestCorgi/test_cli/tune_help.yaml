@@ -11,7 +11,7 @@ output:
                                       model.  [default: 1]
       --engine TEXT                   The optimizer to use to perform the
                                       hyperparameter tuning. Options: wandb, optuna,
-                                      skopt.  [default: wandb]
+                                      skopt.  [default: skopt]
       --id TEXT                       The ID of this hyperparameter tuning job. If
                                       using wandb, then this is the sweep id. If
                                       using optuna, then this is the storage. If
@@ -21,7 +21,8 @@ output:
                                       tuning job. If empty, then it creates a name
                                       from the project name.
       --method TEXT                   The sampling method to use to perform the
-                                      hyperparameter tuning.  [default: random]
+                                      hyperparameter tuning. By default it chooses
+                                      the default method of the engine.
       --min-iter INTEGER              The minimum number of iterations if using
                                       early termination. If left empty, then early
                                       termination is not used.
@@ -42,6 +43,9 @@ output:
       --batch-size INTEGER            The batch size.  [default: 32]
       --dataloader-type [PLAIN|WEIGHTED|STRATIFIED]
                                       [default: DataloaderType.PLAIN]
+      --validation-seq-length INTEGER
+                                      [default: 1000]
+      --deform-lambda FLOAT           The lambda for the deform transform.
       --embedding-dim INTEGER         The size of the embeddings for the nucleotides
                                       (N, A, G, C, T).
       --filters INTEGER               The number of filters in each of the 1D
@@ -62,9 +66,23 @@ output:
       --kernel-size INTEGER           The size of the kernels for CNN only
                                       classifier.
       --cnn-dims-start INTEGER        The size of the number of filters in the first
-                                      CNN layer.
+                                      CNN layer. If not set then it is derived from
+                                      the MACC
       --factor FLOAT                  The factor to multiply the number of filters
                                       in the CNN layers each time it is downscaled.
+      --penultimate-dims INTEGER      The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
+      --include-length / --no-include-length
+                                      [default: no-include-length]
+      --transformer-heads INTEGER     The number of heads in the transformer.
+                                      [default: 8]
+      --transformer-layers INTEGER    The number of layers in the transformer. If
+                                      zero then no transformer is used.  [default:
+                                      0]
+      --macc INTEGER                  The approximate number of multiply or
+                                      accumulate operations in the model. Used to
+                                      set cnn_dims_start if not provided explicitly.
+                                      [default: 10000000]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by
