@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.box import SIMPLE
 from Bio import SeqIO
+import time
 
 from fastai.losses import CrossEntropyLossFlat
 
@@ -223,8 +224,9 @@ class Corgi(ta.TorchApp):
     def output_results(
         self,
         results,
-        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen."),
-        filtered_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        output_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen inside the output directory."),
+        save_filtered:bool = ta.Param(default=True, help="Whether or not to save the filtered sequences."),
         threshold: float = ta.Param(
             default=None, 
             help="The threshold to use for filtering. "
@@ -232,6 +234,12 @@ class Corgi(ta.TorchApp):
         ),
         **kwargs,
     ):
+        if not output_dir:
+            time_string = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
+            output_dir = f"corgi-output-{time_string}"
+
+        output_dir = Path(output_dir)
+
         chunk_details = pd.DataFrame(self.seqio_dataloader.chunk_details, columns=["file", "accession", "chunk"])
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
         results_df = pd.concat(
@@ -249,17 +257,17 @@ class Corgi(ta.TorchApp):
         results_df['prokaryotic'] = predictions_df[list(columns & set(refseq.PROKARYOTIC))].sum(axis=1)
         results_df['organellar'] = predictions_df[list(columns & set(refseq.ORGANELLAR))].sum(axis=1)
 
-        if csv:
-            console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
-            results_df.to_csv(csv, index=False)
-        else:
-            print("No output file given.")
+        if not csv:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            csv = output_dir / f"corgi-output.csv"
+
+        console.print(f"Writing results for {len(results_df)} sequences to: {csv}")
+        results_df.to_csv(csv, index=False)
 
         # Write all the sequences to fasta files
-        if filtered_dir:
-            filtered_dir = Path(filtered_dir)
-            filtered_dir.mkdir(parents=True, exist_ok=True)
-            console.print(f"Writing filtered sequences to: {filtered_dir}")
+        if save_filtered:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
             file_handles = {}
 
             for file, record in self.seqio_dataloader.iter_records():
@@ -278,8 +286,9 @@ class Corgi(ta.TorchApp):
 
                 for category in categories:
                     if category not in file_handles:
-                        file_path = filtered_dir / f"{category}.fasta"
+                        file_path = output_dir / f"{category}.fasta"
                         file_handles[category] = open(file_path, "w")
+                        console.print(f"Writing {category} sequences to: {file_path}")
 
                     SeqIO.write(record, file_handles[category], "fasta")
 
