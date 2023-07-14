@@ -148,6 +148,7 @@ class Corgi(ta.TorchApp):
                 kernel_size=kernel_size,
                 factor=factor,
                 penultimate_dims=penultimate_dims,
+                num_classes=num_classes,
             )
 
         if cnn_only:
@@ -209,7 +210,13 @@ class Corgi(ta.TorchApp):
     def output_results(
         self,
         results,
-        output_csv: Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        output_csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen."),
+        output_fasta_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        threshold: float = ta.Param(
+            default=None, 
+            help="The threshold to use for filtering. "
+                "If not given, then only the most likely category used for filtering.",
+        ),
         **kwargs,
     ):
         predictions_df = pd.DataFrame(results[0].numpy(), columns=self.categories)
@@ -232,6 +239,14 @@ class Corgi(ta.TorchApp):
             results_df.to_csv(output_csv, index=False)
         else:
             print("No output file given.")
+
+        # if output_fasta_dir:
+        #     output_fasta_dir.mkdir(parents=True, exist_ok=True)
+
+        #     for category in self.categories:
+        #         fasta_path = output_fasta_dir / f"{category}.fasta"
+        #         console.print(f"Writing {category} sequences to: {fasta_path}")
+        #         results_df[results_df['prediction'] == category].to_csv(fasta_path, index=False)
 
         # Output bar chart
         from termgraph.module import Data, BarChart, Args

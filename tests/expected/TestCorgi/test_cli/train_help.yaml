@@ -45,10 +45,18 @@ output:
       --kernel-size INTEGER           The size of the kernels for CNN only
                                       classifier.  [default: 3]
       --cnn-dims-start INTEGER        The size of the number of filters in the first
-                                      CNN layer.  [default: 64]
+                                      CNN layer. If not set then it is derived from
+                                      the MACC
       --factor FLOAT                  The factor to multiply the number of filters
                                       in the CNN layers each time it is downscaled.
                                       [default: 2.0]
+      --penultimate-dims INTEGER      The factor to multiply the number of filters
+                                      in the CNN layers each time it is downscaled.
+                                      [default: 512]
+      --macc INTEGER                  The approximate number of multiply or
+                                      accumulate operations in the model. Used to
+                                      set cnn_dims_start if not provided explicitly.
+                                      [default: 10000000]
       --epochs INTEGER                The number of epochs.  [default: 20]
       --freeze-epochs INTEGER         The number of epochs to train when the learner
                                       is frozen and the last layer is trained by
