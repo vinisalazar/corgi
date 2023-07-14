@@ -57,7 +57,9 @@ To make predictions, run the ``corgi`` command line tool:
 
 .. code-block:: bash
 
-    corgi --fasta <input fasta file> --output-csv <results>
+    corgi --file <input seq file>
+
+This will create a directory with the predictions in a CSV file and in fasta format.
 
 For more information about the other options, see the help with:
 
