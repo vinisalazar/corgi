@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List
 from torch import nn
-import torch
 import pandas as pd
 from fastai.data.core import DataLoaders
 from torchapp.util import copy_func, call_func, change_typer_to_defaults, add_kwargs
@@ -11,6 +10,7 @@ import torchapp as ta
 from rich.console import Console
 from rich.table import Table
 from rich.box import SIMPLE
+from Bio import SeqIO
 
 from fastai.losses import CrossEntropyLossFlat
 
@@ -219,23 +219,17 @@ class Corgi(ta.TorchApp):
         self.seqio_dataloader = dataloaders.SeqIODataloader(files=file, device=learner.dls.device, batch_size=batch_size, max_length=max_length, max_seqs=max_seqs, min_length=min_length)
         self.categories = learner.dls.vocab
         return self.seqio_dataloader
-        # df = dataloaders.fastas_to_dataframe(fasta_paths=fasta, max_seqs=max_seqs)  # hack. should be generator
-        # dataloader = learner.dls.test_dl(df)
-        # dataloader.before_batch.fs = [transforms.PadBatch()]
-        
-        # self.inference_df = df
-        # return dataloader
 
     def output_results(
         self,
         results,
         csv: Path = ta.Param(default=None, help="A path to output the results as a CSV. If not given then a default name is chosen."),
-        # output_fasta_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
-        # threshold: float = ta.Param(
-        #     default=None, 
-        #     help="The threshold to use for filtering. "
-        #         "If not given, then only the most likely category used for filtering.",
-        # ),
+        filtered_dir:Path = ta.Param(default=None, help="A path to output the results as a CSV."),
+        threshold: float = ta.Param(
+            default=None, 
+            help="The threshold to use for filtering. "
+                "If not given, then only the most likely category used for filtering.",
+        ),
         **kwargs,
     ):
         chunk_details = pd.DataFrame(self.seqio_dataloader.chunk_details, columns=["file", "accession", "chunk"])
@@ -261,13 +255,36 @@ class Corgi(ta.TorchApp):
         else:
             print("No output file given.")
 
-        # if output_fasta_dir:
-        #     output_fasta_dir.mkdir(parents=True, exist_ok=True)
+        # Write all the sequences to fasta files
+        if filtered_dir:
+            filtered_dir = Path(filtered_dir)
+            filtered_dir.mkdir(parents=True, exist_ok=True)
+            console.print(f"Writing filtered sequences to: {filtered_dir}")
+            file_handles = {}
 
-        #     for category in self.categories:
-        #         fasta_path = output_fasta_dir / f"{category}.fasta"
-        #         console.print(f"Writing {category} sequences to: {fasta_path}")
-        #         results_df[results_df['prediction'] == category].to_csv(fasta_path, index=False)
+            for file, record in self.seqio_dataloader.iter_records():
+                row = results_df[ (results_df.accession == record.id) & (results_df.file == file) ]
+                if len(row) == 0:
+                    categories = ["unclassified"]
+                else:
+                    # Get the categories to write to
+                    if not threshold:
+                        # if no threshold then just use the most likely category
+                        categories = [row['prediction'].item()]
+                    else:
+                        # otherwise use all categories above or equal to the threshold
+                        category_predictions = row.iloc[0][self.categories]
+                        categories = [category_predictions[category_predictions >= threshold].index.item()]
+
+                for category in categories:
+                    if category not in file_handles:
+                        file_path = filtered_dir / f"{category}.fasta"
+                        file_handles[category] = open(file_path, "w")
+
+                    SeqIO.write(record, file_handles[category], "fasta")
+
+            for file_handle in file_handles.values():
+                file_handle.close()
 
         # Output bar chart
         from termgraph.module import Data, BarChart, Args

@@ -374,6 +374,11 @@ class SeqIODataloader:
     def parse(self, file):
         return SeqIO.parse(file, self.get_file_format(file))
 
+    def iter_records(self):
+        for file in self.files:
+            for record in self.parse(file):
+                yield file, record
+
     def __iter__(self):
         batch = []
         seqs = 0
